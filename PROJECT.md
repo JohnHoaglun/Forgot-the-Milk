@@ -2,7 +2,7 @@
 
 ## Status
 
-D1 in progress: Xcode project, targets, and canonical verification harness established. Current delivery slice: D1 — Foundation and catalog.
+D1 complete: app shell, SwiftData schema, deterministic seeded catalog, and persisted list behavior delivered and verified by `scripts/verify.sh`. Current delivery slice: D2 — entry, metadata, and accessibility.
 
 ## Purpose
 
@@ -14,4 +14,4 @@ iOS 17+, Swift 5.9+, SwiftUI, SwiftData, CloudKit/CKShare. Bundle ID: `com.hoagl
 
 ## Architecture status
 
-The Xcode project and minimal app shell exist (iPhone-only, iOS 17+, bundle `com.hoaglun.forgotthemilk`). The local data model, deterministic seed catalog, and persisted-list behavior are not yet implemented. Local persistence will be the source of truth; CloudKit will reconcile shared data in D4.
+The app shell, SwiftData schema (`HouseholdList`, `Category`, `CatalogItem`, `ListItem`, `Template`), deterministic seed catalog (26 categories, 256 labels, audited by `scripts/check_seed_catalog.sh`), idempotent first-launch seeding, item use cases (complete/restore/delete/clear-completed), and the list screen with category grouping and a collapsible completed section exist. Local persistence is the source of truth; CloudKit will reconcile shared data in D4.

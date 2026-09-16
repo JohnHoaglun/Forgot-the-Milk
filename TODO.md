@@ -3,8 +3,8 @@
 ## Now
 
 - [x] Establish the D1 Xcode project, targets, and canonical `scripts/verify.sh` command.
-- [ ] Implement and test the D1 local data model and deterministic catalog.
-- [ ] Implement and test persisted list behavior.
+- [x] Implement and test the D1 local data model and deterministic catalog.
+- [x] Implement and test persisted list behavior.
 
 ## Later
 

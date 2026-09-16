@@ -2,7 +2,7 @@
 
 ## Active milestone
 
-D1 — Foundation and catalog.
+D2 — Entry, metadata, and accessibility. D1 (foundation and catalog) was delivered and verified by `scripts/verify.sh`.
 
 ## Delivery sequence
 
