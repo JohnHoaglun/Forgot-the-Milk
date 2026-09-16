@@ -1,6 +1,6 @@
 # Architecture
 
-No production code exists yet. The intended boundary is:
+The Xcode project, minimal app shell, and unit-test harness exist; no domain, persistence, or sync code exists yet. The intended boundary is:
 
 `SwiftUI views → domain/use cases → local persistence → sync reconciliation adapters`
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning complete; implementation has not started. Current delivery slice: D1 — Foundation and catalog.
+D1 in progress: Xcode project, targets, and canonical verification harness established. Current delivery slice: D1 — Foundation and catalog.
 
 ## Purpose
 
@@ -14,4 +14,4 @@ iOS 17+, Swift 5.9+, SwiftUI, SwiftData, CloudKit/CKShare. Bundle ID: `com.hoagl
 
 ## Architecture status
 
-No app architecture has been implemented. D1 establishes the app shell, local data model, deterministic seed catalog, and persisted-list behavior. Local persistence will be the source of truth; CloudKit will reconcile shared data in D4.
+The Xcode project and minimal app shell exist (iPhone-only, iOS 17+, bundle `com.hoaglun.forgotthemilk`). The local data model, deterministic seed catalog, and persisted-list behavior are not yet implemented. Local persistence will be the source of truth; CloudKit will reconcile shared data in D4.

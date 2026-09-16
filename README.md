@@ -2,7 +2,7 @@
 
 An iPhone-first, offline-first grocery and household shopping-list app for a shared household. It is designed for a simple, collaborative experience: one combined list, store-ordered categories, real-time iCloud sharing, and no ads, subscriptions, or custom backend.
 
-> **Project status:** Planning. The product specification is complete; app implementation has not started.
+> **Project status:** D1 in progress. The Xcode project, test target, and verification harness are established; feature implementation has not started.
 
 ## The v1 experience
 
