@@ -20,8 +20,30 @@ struct ForgotTheMilkApp: App {
         }
     }
 
+    private static let databaseName = "ForgotTheMilk.sqlite"
+
+    private static var databaseURL: URL {
+        FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first!
+            .appendingPathComponent(databaseName)
+    }
+
     private static func makeContainer() throws -> ModelContainer {
-        let configuration = ModelConfiguration()
+        #if DEBUG
+        // DEBUG-only launch arguments are deterministic UI-test seams:
+        // "resetDatabaseOnLaunch" clears the store and app-owned defaults,
+        // "contentSizeCategory=<size>" forces a Dynamic Type size.
+        if CommandLine.arguments.contains("resetDatabaseOnLaunch") {
+            let fileManager = FileManager.default
+            for suffix in ["", "-wal", "-shm"] {
+                try? fileManager.removeItem(at: URL(fileURLWithPath: databaseURL.path + suffix))
+            }
+            UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+        }
+        #endif
+
+        let configuration = ModelConfiguration(url: databaseURL)
         let container = try ModelContainer(
             for: HouseholdList.self, Category.self, CatalogItem.self, ListItem.self, Template.self,
             configurations: configuration
@@ -34,8 +56,45 @@ struct ForgotTheMilkApp: App {
 struct RootView: View {
     let container: ModelContainer
 
+    #if DEBUG
+    private var debugTypeSize: DynamicTypeSize? {
+        guard let argument = CommandLine.arguments.first(where: { $0.hasPrefix("contentSizeCategory=") }) else {
+            return nil
+        }
+        let value = String(argument.dropFirst("contentSizeCategory=".count))
+        switch value {
+        case "xSmall": return .xSmall
+        case "small": return .small
+        case "medium": return .medium
+        case "large": return .large
+        case "xLarge": return .xLarge
+        case "xxLarge": return .xxLarge
+        case "xxxLarge": return .xxxLarge
+        case "accessibilityMedium", "accessibility1": return .accessibility1
+        case "accessibilityLarge", "accessibility2": return .accessibility2
+        case "accessibilityXLarge", "accessibility3": return .accessibility3
+        case "accessibilityXXLarge", "accessibility4": return .accessibility4
+        case "accessibilityXXXLarge", "accessibility5": return .accessibility5
+        default: return nil
+        }
+    }
+    #endif
+
     var body: some View {
-        ListView()
+        root
             .modelContainer(container)
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        #if DEBUG
+        if let size = debugTypeSize {
+            ListView().dynamicTypeSize(size)
+        } else {
+            ListView()
+        }
+        #else
+        ListView()
+        #endif
     }
 }

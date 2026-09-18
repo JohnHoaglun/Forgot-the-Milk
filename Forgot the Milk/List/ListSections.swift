@@ -19,18 +19,11 @@ struct GroupedList {
 }
 
 enum ListGrouping {
-    static func group(
-        categories: [Category],
-        items: [ListItem],
-        categoryOrder: [UUID]
-    ) -> GroupedList {
-        let needed = items.filter { $0.state == .needed }
-        let completed = items.filter { $0.state == .completed }
-
-        let orderRank = Dictionary(categoryOrder.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+    static func orderedCategories(_ categories: [Category], order: [UUID]) -> [Category] {
+        let orderRank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
         let fallbackRank = Dictionary(categories.map { ($0.id, $0.defaultOrder) }, uniquingKeysWith: { first, _ in first })
 
-        let orderedCategories = categories.sorted { lhs, rhs in
+        return categories.sorted { lhs, rhs in
             let lhsPrimary = orderRank[lhs.id] ?? Int.max
             let rhsPrimary = orderRank[rhs.id] ?? Int.max
             if lhsPrimary != rhsPrimary { return lhsPrimary < rhsPrimary }
@@ -39,10 +32,19 @@ enum ListGrouping {
             if lhsSecondary != rhsSecondary { return lhsSecondary < rhsSecondary }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    static func group(
+        categories: [Category],
+        items: [ListItem],
+        categoryOrder: [UUID]
+    ) -> GroupedList {
+        let needed = items.filter { $0.state == .needed }
+        let completed = items.filter { $0.state == .completed }
 
         let neededByCategory = Dictionary(grouping: needed, by: \.categoryID)
 
-        let sections = orderedCategories.compactMap { category -> ListSection? in
+        let sections = orderedCategories(categories, order: categoryOrder).compactMap { category -> ListSection? in
             guard let bucket = neededByCategory[category.id], !bucket.isEmpty else { return nil }
             return ListSection(categoryID: category.id, name: category.name, items: ordered(bucket))
         }

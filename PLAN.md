@@ -2,12 +2,12 @@
 
 ## Active milestone
 
-D2 — Entry, metadata, and accessibility. D1 (foundation and catalog) was delivered and verified by `scripts/verify.sh`.
+D3 — Templates and export. D1 (foundation and catalog) and D2 (item workflow) were delivered and verified by `scripts/verify.sh`.
 
 ## Delivery sequence
 
-1. D1: app shell, local model, deterministic catalog, persisted list behavior.
-2. D2: catalog picker, custom items, metadata, category order, accessibility.
+1. D1 (delivered): app shell, local model, deterministic catalog, persisted list behavior.
+2. D2 (delivered): catalog picker, custom items, metadata, category order, accessibility.
 3. D3: reusable templates and plain-text email/share-sheet export.
 4. D4: CloudKit sharing, invitations, offline reconciliation, and recovery states.
 

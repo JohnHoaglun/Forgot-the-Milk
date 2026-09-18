@@ -31,14 +31,30 @@ xcodebuild \
   -derivedDataPath "${derived_data_path}" \
   build
 
+# xcodebuild -only-testing matches the test *target* name (with spaces),
+# not the Swift module name.
+unit_test_target="Forgot the MilkTests"
+ui_test_target="Forgot the MilkUITests"
+
 echo
-echo "==> Running tests (simulator)"
+echo "==> Running unit tests (simulator)"
 xcodebuild \
   -project "${project}" \
   -scheme "${scheme}" \
   -destination "${destination}" \
   -derivedDataPath "${derived_data_path}" \
+  -only-testing:"${unit_test_target}" \
   test
 
 echo
-echo "verify: OK — build succeeded and tests passed."
+echo "==> Running UI tests (simulator)"
+xcodebuild \
+  -project "${project}" \
+  -scheme "${scheme}" \
+  -destination "${destination}" \
+  -derivedDataPath "${derived_data_path}" \
+  -only-testing:"${ui_test_target}" \
+  test
+
+echo
+echo "verify: OK — build succeeded and unit + UI tests passed."

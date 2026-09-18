@@ -48,4 +48,27 @@ enum TestFixtures {
         try? context.save()
         return item
     }
+
+    static func makeCatalogItem(
+        in context: ModelContext,
+        category: Category,
+        name: String,
+        defaultQuantity: String? = nil,
+        defaultUnit: String? = nil,
+        defaultNote: String? = nil,
+        scope: CatalogScope = .builtIn
+    ) -> CatalogItem {
+        let item = CatalogItem(
+            id: UUID(),
+            name: name,
+            categoryID: category.id,
+            defaultQuantity: defaultQuantity,
+            defaultUnit: defaultUnit,
+            defaultNote: defaultNote,
+            scope: scope
+        )
+        context.insert(item)
+        try? context.save()
+        return item
+    }
 }

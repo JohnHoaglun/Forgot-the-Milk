@@ -13,6 +13,8 @@ struct ListView: View {
     @State private var deleteCandidate: ListItem?
     @State private var isConfirmingDelete = false
     @State private var isConfirmingClear = false
+    @State private var editTarget: ListItem?
+    @State private var isEditingCategories = false
 
     private var list: HouseholdList? {
         lists.first
@@ -25,10 +27,46 @@ struct ListView: View {
         return ListGrouping.group(categories: categories, items: items, categoryOrder: list.categoryOrder)
     }
 
+    private var isListEmpty: Bool {
+        grouped.sections.isEmpty && grouped.completed.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("Forgot the Milk")
+                .toolbar { toolbarContent }
+        }
+        .sheet(item: $editTarget) { item in
+            ItemFormView(mode: .edit(item))
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if !isEditingCategories {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Edit") {
+                    isEditingCategories = true
+                }
+                .accessibilityIdentifier("edit-categories-button")
+                .accessibilityHint("Reorder the categories on this list")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    CatalogPickerView()
+                } label: {
+                    Label("Add Item", systemImage: "plus")
+                        .accessibilityIdentifier("add-item-button")
+                }
+            }
+        } else {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    isEditingCategories = false
+                }
+                .accessibilityIdentifier("done-categories-button")
+            }
         }
     }
 
@@ -37,6 +75,8 @@ struct ListView: View {
         if list == nil {
             Text("No list found")
                 .foregroundStyle(.secondary)
+        } else if isEditingCategories {
+            categoryEditList
         } else {
             listContent
         }
@@ -54,15 +94,22 @@ struct ListView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .textCase(nil)
+                        .accessibilityIdentifier("category-header-\(section.categoryID)")
                 }
             }
 
-            if grouped.sections.isEmpty && grouped.completed.isEmpty {
+            if isListEmpty {
                 ContentUnavailableView(
                     "Your list is empty",
                     systemImage: "cart",
                     description: Text("Items will appear here once they are added.")
                 )
+                NavigationLink {
+                    CatalogPickerView()
+                } label: {
+                    Text("Add your first item")
+                        .accessibilityIdentifier("empty-state-add-button")
+                }
             }
 
             if !grouped.completed.isEmpty {
@@ -70,11 +117,7 @@ struct ListView: View {
             }
         }
         .accessibilityIdentifier("list-view")
-        .confirmationDialog(
-            deleteDialogMessage,
-            isPresented: $isConfirmingDelete,
-            titleVisibility: .visible
-        ) {
+        .alert(deleteDialogMessage, isPresented: $isConfirmingDelete) {
             Button("Delete", role: .destructive) {
                 confirmDelete()
             }
@@ -82,11 +125,7 @@ struct ListView: View {
                 deleteCandidate = nil
             }
         }
-        .confirmationDialog(
-            "Clear \(grouped.completed.count) completed items?",
-            isPresented: $isConfirmingClear,
-            titleVisibility: .visible
-        ) {
+        .alert("Clear \(grouped.completed.count) completed items?", isPresented: $isConfirmingClear) {
             Button("Clear", role: .destructive) {
                 if let list {
                     mutate { $0.clearCompleted(listID: list.id) }
@@ -98,8 +137,72 @@ struct ListView: View {
         }
     }
 
+    private var categoryEditList: some View {
+        List {
+            ForEach(orderedCategories) { category in
+                categoryEditRow(for: category)
+            }
+            .onMove { source, destination in
+                guard let list else { return }
+                var order = orderedCategories.map(\.id)
+                order.move(fromOffsets: source, toOffset: destination)
+                ListUseCases(context: modelContext).setCategoryOrder(order, for: list.id)
+            }
+        }
+        .environment(\.editMode, .constant(.active))
+        .accessibilityIdentifier("category-edit-list")
+        .accessibilityLabel("Reorder categories")
+    }
+
+    private func categoryEditRow(for category: Category) -> some View {
+        HStack {
+            Text(category.name)
+            Spacer()
+            Text("\(neededCount(in: category.id))")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(category.name)
+        .accessibilityIdentifier("category-row-\(category.name)")
+        .accessibilityActions {
+            Button("Move up") {
+                moveCategory(category, up: true)
+            }
+            Button("Move down") {
+                moveCategory(category, up: false)
+            }
+        }
+    }
+
+    private func moveCategory(_ category: Category, up: Bool) {
+        guard let list else { return }
+        var order = orderedCategories.map(\.id)
+        guard let from = order.firstIndex(of: category.id) else { return }
+        if up {
+            guard from > 0 else { return }
+            order.move(fromOffsets: IndexSet(integer: from), toOffset: from - 1)
+        } else {
+            guard from < order.count - 1 else { return }
+            order.move(fromOffsets: IndexSet(integer: from), toOffset: from + 2)
+        }
+        ListUseCases(context: modelContext).setCategoryOrder(order, for: list.id)
+    }
+
+    private var orderedCategories: [Category] {
+        guard let list else { return [] }
+        return ListGrouping.orderedCategories(categories, order: list.categoryOrder)
+    }
+
+    private func neededCount(in categoryID: UUID) -> Int {
+        guard let list else { return 0 }
+        return items.filter { $0.listID == list.id && $0.categoryID == categoryID && $0.state == .needed }.count
+    }
+
     private func neededRow(for item: ListItem) -> some View {
-        ListRow(item: item) {
+        ListRow(item: item, onEdit: {
+            editTarget = item
+        }) {
             mutate { $0.complete(item) }
         }
         .swipeActions(edge: .trailing) {
@@ -119,7 +222,9 @@ struct ListView: View {
     }
 
     private func completedRow(for item: ListItem) -> some View {
-        ListRow(item: item) {
+        ListRow(item: item, onEdit: {
+            editTarget = item
+        }) {
             mutate { $0.restore(item) }
         }
         .swipeActions(edge: .leading) {

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ListRow: View {
     let item: ListItem
+    var onEdit: (() -> Void)?
     let onToggle: () -> Void
 
     private var isCompleted: Bool {
@@ -21,6 +22,7 @@ struct ListRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isCompleted ? "Mark \(item.name) as needed" : "Mark \(item.name) as completed")
             .accessibilityHint("Double tap to toggle the item's status")
+            .accessibilityIdentifier("item-toggle-\(item.id)")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
@@ -34,8 +36,15 @@ struct ListRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onEdit?()
+            }
         }
         .accessibilityIdentifier("list-item-\(item.id)")
+        .accessibilityAction(named: "Edit") {
+            onEdit?()
+        }
     }
 
     private var summary: String? {
