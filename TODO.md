@@ -14,7 +14,7 @@
 - [x] D3: `MailComposer`/`ShareSheetPresenter` adapters with deterministic fakes and `EmailExportService`.
 - [x] D3: template UI (save/apply/manage) and `Email list` action, with accessibility labels.
 - [x] D3: UI tests for template and export flows; Dynamic Type and VoiceOver pass for new surfaces.
-- [ ] D3: final end-to-end `scripts/verify.sh` run to close the slice (implementation, tests, docs, and build number 4 committed 2026-09-19).
+- [x] D3: final end-to-end `scripts/verify.sh` run to close the slice (build + unit + UI tests green 2026-09-19).
 
 ## Later
 
