@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct ForgotTheMilkApp: App {
     private let container: ModelContainer
+    private let export: EmailExport
 
     init() {
         do {
@@ -12,11 +13,12 @@ struct ForgotTheMilkApp: App {
         } catch {
             fatalError("Failed to create the model container: \(error)")
         }
+        export = EmailExportFactory.make()
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(container: container)
+            RootView(container: container, export: export)
         }
     }
 
@@ -55,6 +57,7 @@ struct ForgotTheMilkApp: App {
 
 struct RootView: View {
     let container: ModelContainer
+    let export: EmailExport
 
     #if DEBUG
     private var debugTypeSize: DynamicTypeSize? {
@@ -81,20 +84,29 @@ struct RootView: View {
     #endif
 
     var body: some View {
-        root
+        let base = root
             .modelContainer(container)
+        #if DEBUG
+        if let debugState = export.debugState {
+            base.overlay { DebugExportSheetHost(state: debugState) }
+        } else {
+            base
+        }
+        #else
+        base
+        #endif
     }
 
     @ViewBuilder
     private var root: some View {
         #if DEBUG
         if let size = debugTypeSize {
-            ListView().dynamicTypeSize(size)
+            ListView(export: export).dynamicTypeSize(size)
         } else {
-            ListView()
+            ListView(export: export)
         }
         #else
-        ListView()
+        ListView(export: export)
         #endif
     }
 }

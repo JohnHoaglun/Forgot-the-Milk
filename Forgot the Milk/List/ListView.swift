@@ -3,9 +3,12 @@ import SwiftData
 import SwiftUI
 
 struct ListView: View {
+    let export: EmailExport
+
     @Query private var lists: [HouseholdList]
     @Query private var categories: [Category]
     @Query private var items: [ListItem]
+    @Query private var allTemplates: [Template]
 
     @Environment(\.modelContext) private var modelContext
     @AppStorage("list.completedSection.expanded") private var completedExpanded = false
@@ -15,6 +18,11 @@ struct ListView: View {
     @State private var isConfirmingClear = false
     @State private var editTarget: ListItem?
     @State private var isEditingCategories = false
+    @State private var isShowingSaveTemplateSheet = false
+    @State private var isShowingManageTemplatesSheet = false
+    @State private var applyCandidate: Template?
+    @State private var isConfirmingApply = false
+    @State private var applyReport: ApplyReport?
 
     private var list: HouseholdList? {
         lists.first
@@ -31,6 +39,13 @@ struct ListView: View {
         grouped.sections.isEmpty && grouped.completed.isEmpty
     }
 
+    private var templates: [Template] {
+        guard let list else { return [] }
+        return allTemplates
+            .filter { $0.listID == list.id }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
     var body: some View {
         NavigationStack {
             content
@@ -39,6 +54,40 @@ struct ListView: View {
         }
         .sheet(item: $editTarget) { item in
             ItemFormView(mode: .edit(item))
+        }
+        .sheet(isPresented: $isShowingSaveTemplateSheet) {
+            if let list {
+                SaveTemplateSheet(
+                    listID: list.id,
+                    hasNeededItems: grouped.totalNeeded > 0,
+                    onSave: { name in
+                        TemplateUseCases(context: modelContext).save(named: name, for: list.id) == .saved
+                    },
+                    onDone: { isShowingSaveTemplateSheet = false }
+                )
+            }
+        }
+        .sheet(isPresented: $isShowingManageTemplatesSheet) {
+            if let list {
+                ManageTemplatesSheet(listID: list.id)
+            }
+        }
+        .alert(applyConfirmationTitle, isPresented: $isConfirmingApply) {
+            Button("Apply") {
+                performApply()
+            }
+            Button("Cancel", role: .cancel) {
+                applyCandidate = nil
+            }
+        } message: {
+            if let template = applyCandidate {
+                Text("Adds or reopens \(template.entries.count) items from \(template.name).")
+            }
+        }
+        .alert(applyReportTitle, isPresented: applyReportPresented) {
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text(applyReport?.message ?? "")
         }
     }
 
@@ -51,6 +100,19 @@ struct ListView: View {
                 }
                 .accessibilityIdentifier("edit-categories-button")
                 .accessibilityHint("Reorder the categories on this list")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                templatesMenu
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    performExport()
+                } label: {
+                    Label("Email list", systemImage: "paperplane")
+                        .accessibilityIdentifier("email-list-button")
+                        .accessibilityHint("Emails or shares the items you still need")
+                }
+                .disabled(grouped.totalNeeded == 0)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
@@ -68,6 +130,85 @@ struct ListView: View {
                 .accessibilityIdentifier("done-categories-button")
             }
         }
+    }
+
+    private var templatesMenu: some View {
+        Menu {
+            if templates.isEmpty {
+                Text("No templates")
+                    .accessibilityIdentifier("templates-menu-empty")
+            } else {
+                ForEach(templates) { template in
+                    Button {
+                        applyCandidate = template
+                        isConfirmingApply = true
+                    } label: {
+                        Label(template.name, systemImage: "checkmark")
+                    }
+                }
+            }
+            Divider()
+            Button {
+                isShowingSaveTemplateSheet = true
+            } label: {
+                Label("Save as template", systemImage: "plus")
+            }
+            .accessibilityIdentifier("templates-menu-save-button")
+            Button {
+                isShowingManageTemplatesSheet = true
+            } label: {
+                Label("Manage templates", systemImage: "ellipsis.circle")
+            }
+            .accessibilityIdentifier("templates-menu-manage-button")
+        } label: {
+            Label("Templates", systemImage: "rectangle.on.rectangle")
+                .accessibilityIdentifier("templates-menu-button")
+                .accessibilityHint("Save, apply, or manage item templates")
+        }
+    }
+
+    private var applyConfirmationTitle: String {
+        if let name = applyCandidate?.name {
+            return "Apply \(name)?"
+        }
+        return "Apply template?"
+    }
+
+    private var applyReportTitle: String {
+        applyReport?.title ?? "Template applied"
+    }
+
+    private var applyReportPresented: Binding<Bool> {
+        Binding(
+            get: { applyReport != nil },
+            set: { if !$0 { applyReport = nil } }
+        )
+    }
+
+    private struct ApplyReport {
+        let title: String
+        let message: String
+    }
+
+    private func performApply() {
+        guard let list, let template = applyCandidate else { return }
+        let report = TemplateUseCases(context: modelContext).apply(template, to: list.id)
+        var changes: [String] = []
+        if report.added > 0 { changes.append("added \(report.added)") }
+        if report.reopened > 0 { changes.append("reopened \(report.reopened)") }
+        let message = changes.isEmpty
+            ? "No changes needed: items are already on the list."
+            : changes.joined(separator: ", ") + "."
+        applyCandidate = nil
+        isConfirmingApply = false
+        applyReport = ApplyReport(title: "\(template.name) applied", message: message)
+    }
+
+    private func performExport() {
+        guard let list else { return }
+        let body = ListExport.text(categories: categories, items: items, categoryOrder: list.categoryOrder)
+        guard !body.isEmpty else { return }
+        export.service.export(subject: list.title, body: body)
     }
 
     @ViewBuilder

@@ -5,6 +5,9 @@
 //  D2 UI coverage: catalog/custom entry, metadata, duplicate/reopen rule,
 //  complete/restore, delete, category reorder (drag handles), Dynamic Type,
 //  and VoiceOver labels.
+//  D3 UI coverage: templates (save, apply, rename, delete) and the email
+//  export flow through the DEBUG deterministic fakes (share-sheet fallback
+//  and configured mail), plus large-text usage of the new surfaces.
 //
 //  Every test launches with the DEBUG-only `resetDatabaseOnLaunch` argument
 //  so it starts from a clean, seeded store. Persistence tests terminate the
@@ -27,7 +30,7 @@ final class Forgot_the_MilkUITests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func launch(resetDatabase: Bool = true, typeSize: String? = nil) {
+    private func launch(resetDatabase: Bool = true, typeSize: String? = nil, extraArguments: [String] = []) {
         var arguments: [String] = []
         if resetDatabase {
             arguments.append("resetDatabaseOnLaunch")
@@ -35,6 +38,7 @@ final class Forgot_the_MilkUITests: XCTestCase {
         if let typeSize {
             arguments.append("contentSizeCategory=\(typeSize)")
         }
+        arguments.append(contentsOf: extraArguments)
         app.launchArguments = arguments
         app.launch()
     }
@@ -527,5 +531,272 @@ final class Forgot_the_MilkUITests: XCTestCase {
         button(withLabel: "Mark Milk as completed").tap()
         let restore = showCompletedItem(labeled: "Mark Milk as needed")
         XCTAssertTrue(restore.exists)
+    }
+
+    // MARK: - D3 templates
+
+    /// Taps the templates menu button, trying the accessibility identifier
+    /// first and falling back to the "Templates" label if the identifier
+    /// does not propagate through the Menu.
+    private func openTemplatesMenu() {
+        let byID = app.buttons["templates-menu-button"]
+        let menuButton = byID.waitForExistence(timeout: 5) ? byID : app.buttons["Templates"].firstMatch
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5), "Templates menu button should be visible")
+        menuButton.tap()
+    }
+
+    /// Returns a menu item by identifier, falling back to its label.
+    private func menuButton(_ identifier: String, _ label: String) -> XCUIElement {
+        let byID = app.buttons[identifier]
+        if byID.waitForExistence(timeout: 5) { return byID }
+        let byLabel = app.buttons[label].firstMatch
+        XCTAssertTrue(byLabel.waitForExistence(timeout: 5), "Menu item '\(label)' should be visible")
+        return byLabel
+    }
+
+    private func waitUntil(timeout: TimeInterval = 10, description: String, _ condition: () -> Bool) {
+        var remaining = timeout
+        let poll: TimeInterval = 0.2
+        while !condition() {
+            guard remaining > 0 else {
+                XCTFail("\(description): condition not met after \(timeout)s")
+                return
+            }
+            Thread.sleep(forTimeInterval: poll)
+            remaining -= poll
+        }
+    }
+
+    private func identifiedLabel(_ identifier: String) -> String {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@", identifier))
+            .firstMatch.label
+    }
+
+    private func saveTemplate(named name: String) {
+        openTemplatesMenu()
+        menuButton("templates-menu-save-button", "Save as template").tap()
+        let sheet = app.staticTexts["Save as template"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5), "Save template sheet should be visible")
+        app.textFields["template-name-field"].tap()
+        app.typeText(name)
+        app.buttons["save-template-save-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible")
+    }
+
+    func testTemplatesMenuEmptyShowsNoTemplates() {
+        launch()
+        openTemplatesMenu()
+
+        XCTAssertTrue(app.descendants(matching: .any)["templates-menu-empty"].waitForExistence(timeout: 5))
+        XCTAssertTrue(menuButton("templates-menu-save-button", "Save as template").exists)
+        XCTAssertTrue(menuButton("templates-menu-manage-button", "Manage templates").exists)
+    }
+
+    func testSaveTemplateFromToolbar() {
+        launch()
+        addCatalogItem("Milk", quantity: "2", unit: "liters", note: "whole")
+
+        saveTemplate(named: "Weekly")
+
+        XCTAssertTrue(app.staticTexts["Milk"].exists)
+        openTemplatesMenu()
+        menuButton("templates-menu-manage-button", "Manage templates").tap()
+        XCTAssertTrue(app.descendants(matching: .any)["template-row-Weekly"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1 item"].exists)
+        app.buttons["manage-templates-done-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible")
+    }
+
+    func testSaveTemplateUnavailableWhenListEmpty() {
+        launch()
+        openTemplatesMenu()
+        menuButton("templates-menu-save-button", "Save as template").tap()
+
+        XCTAssertTrue(app.staticTexts["Add items to your list before saving a template."].waitForExistence(timeout: 5))
+        app.buttons["save-template-cancel-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible")
+    }
+
+    func testDuplicateTemplateNameIsRejectedInSheet() {
+        launch()
+        addCatalogItem("Milk")
+        saveTemplate(named: "Weekly")
+
+        openTemplatesMenu()
+        menuButton("templates-menu-save-button", "Save as template").tap()
+        app.textFields["template-name-field"].tap()
+        app.typeText("weekly")
+
+        XCTAssertTrue(app.staticTexts["A template with this name already exists."].exists)
+        XCTAssertFalse(app.buttons["save-template-save-button"].isEnabled)
+        app.buttons["save-template-cancel-button"].tap()
+    }
+
+    func testApplyTemplateRestoresDeletedItems() {
+        launch()
+        addCatalogItem("Milk", quantity: "2", unit: "liters", note: "whole")
+        addCatalogItem("Apples")
+        saveTemplate(named: "Weekly")
+
+        openDeleteDialog(forItem: "Milk")
+        app.alerts.firstMatch.buttons["Delete"].firstMatch.tap()
+        openDeleteDialog(forItem: "Apples")
+        app.alerts.firstMatch.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Your list is empty"].exists)
+
+        openTemplatesMenu()
+        app.buttons["Weekly"].firstMatch.tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5), "Apply confirmation should be visible")
+        XCTAssertTrue(app.alerts.firstMatch.staticTexts["Adds or reopens 2 items from Weekly."].exists)
+        app.alerts.firstMatch.buttons["Apply"].firstMatch.tap()
+
+        let report = app.alerts.firstMatch
+        XCTAssertTrue(report.waitForExistence(timeout: 5), "Apply report should be visible")
+        XCTAssertTrue(report.staticTexts["Weekly applied"].exists)
+        XCTAssertTrue(report.staticTexts["added 2."].exists)
+        report.buttons["Done"].firstMatch.tap()
+
+        XCTAssertTrue(app.staticTexts["Milk"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Apples"].exists)
+    }
+
+    func testApplyTemplateNoChangesNeeded() {
+        launch()
+        addCatalogItem("Milk")
+        saveTemplate(named: "Weekly")
+
+        openTemplatesMenu()
+        app.buttons["Weekly"].firstMatch.tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5), "Apply confirmation should be visible")
+        app.alerts.firstMatch.buttons["Apply"].firstMatch.tap()
+
+        let report = app.alerts.firstMatch
+        XCTAssertTrue(report.staticTexts["No changes needed: items are already on the list."].waitForExistence(timeout: 5))
+        report.buttons["Done"].firstMatch.tap()
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == 'Milk'")).count, 1)
+    }
+
+    func testRenameTemplate() {
+        launch()
+        addCatalogItem("Milk")
+        saveTemplate(named: "Weekly")
+
+        openTemplatesMenu()
+        menuButton("templates-menu-manage-button", "Manage templates").tap()
+        let rename = app.buttons["Rename"]
+        XCTAssertTrue(rename.waitForExistence(timeout: 5), "Rename button should be visible")
+        rename.tap()
+
+        let nameField = app.textFields["rename-template-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Rename name field should be visible")
+        nameField.tap()
+        let backspace = app.keyboards.firstMatch.keys["delete"]
+        guard backspace.waitForExistence(timeout: 5) else {
+            let labels = app.keyboards.firstMatch.keys.allElementsBoundByIndex.compactMap { $0.label }
+            XCTFail("Keyboard backspace key not available after focusing the name field; keys: \(labels)")
+            return
+        }
+        // A cleared, focused SwiftUI TextField reports its placeholder as the AX value.
+        let placeholder = "Template name"
+        func cleared() -> Bool {
+            let value = (nameField.value as? String) ?? ""
+            return value.isEmpty || value == placeholder
+        }
+        var taps = 0
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline, !cleared() {
+            backspace.tap()
+            taps += 1
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+        XCTAssertTrue(cleared(), "Name field should be cleared before validating the empty state (taps: \(taps), last value: \(nameField.value as? String ?? "nil"))")
+
+        let renameButton = app.buttons["rename-template-rename-button"]
+        waitUntil(description: "Rename button disabled for an empty name") {
+            renameButton.exists && !renameButton.isEnabled
+        }
+        XCTAssertTrue(app.staticTexts["Name is required."].waitForExistence(timeout: 5))
+        app.typeText("Bakery")
+        waitUntil(description: "Rename button enabled for a valid name") {
+            renameButton.exists && renameButton.isEnabled
+        }
+        renameButton.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["template-row-Bakery"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Weekly"].exists)
+        app.buttons["manage-templates-done-button"].tap()
+    }
+
+    func testDeleteTemplateKeepsItems() {
+        launch()
+        addCatalogItem("Milk")
+        saveTemplate(named: "Weekly")
+
+        openTemplatesMenu()
+        menuButton("templates-menu-manage-button", "Manage templates").tap()
+        let delete = app.buttons["Delete"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "Delete button should be visible")
+        delete.tap()
+
+        let confirmTitle = app.staticTexts["Delete Weekly?"]
+        XCTAssertTrue(confirmTitle.waitForExistence(timeout: 5), "Delete confirmation should be visible")
+        let confirm = app.buttons["delete-template-confirm-button"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Delete button in confirmation should be visible")
+        confirm.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["manage-templates-empty"].waitForExistence(timeout: 5))
+
+        app.buttons["manage-templates-done-button"].tap()
+        XCTAssertTrue(app.staticTexts["Milk"].waitForExistence(timeout: 5))
+    }
+
+    // MARK: - D3 email export (DEBUG fakes)
+
+    func testEmailListButtonDisabledWhenNothingNeeded() {
+        launch(extraArguments: ["fakeEmailExport"])
+        XCTAssertFalse(app.buttons["email-list-button"].firstMatch.isEnabled)
+    }
+
+    func testEmailExportFallsBackToShareSheet() {
+        launch(extraArguments: ["fakeEmailExport"])
+        addCatalogItem("Milk", quantity: "2", unit: "liters", note: "whole")
+
+        app.buttons["email-list-button"].firstMatch.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["export-via-share-indicator"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["(none)"].exists)
+        let body = identifiedLabel("export-body-text")
+        XCTAssertEqual(body, "Dairy\n  Milk \u{2014} 2 liters \u{2014} whole")
+        app.buttons["export-dismiss-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible")
+    }
+
+    func testEmailExportUsesMailWhenConfigured() {
+        launch(extraArguments: ["fakeEmailExport", "fakeMailConfigured"])
+        addCatalogItem("Milk")
+
+        app.buttons["email-list-button"].firstMatch.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["export-via-mail-indicator"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["My List"].exists)
+        let body = identifiedLabel("export-body-text")
+        XCTAssertEqual(body, "Dairy\n  Milk")
+        app.buttons["export-dismiss-button"].tap()
+    }
+
+    func testDynamicTypeTemplateAndExportSurfaces() {
+        launch(typeSize: "accessibility1", extraArguments: ["fakeEmailExport"])
+        addCatalogItem("Milk", quantity: "2", unit: "liters", note: "whole")
+
+        openTemplatesMenu()
+        menuButton("templates-menu-save-button", "Save as template").tap()
+        let nameField = app.textFields["template-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Template name field should be visible at large text")
+        nameField.tap()
+        app.typeText("Weekly")
+        app.buttons["save-template-save-button"].tap()
+
+        app.buttons["email-list-button"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["export-body-text"].waitForExistence(timeout: 5))
     }
 }
