@@ -17,7 +17,8 @@
 - [x] D3: final end-to-end `scripts/verify.sh` run to close the slice (build + unit + UI tests green 2026-09-19).
 
 - [x] D4: CloudKit entitlements wired (`Forgot the Milk.entitlements` with container `iCloud.com.hoaglun.forgotthemilk`, `com.apple.developer.icloud-services` = `CloudKit`, `CODE_SIGN_ENTITLEMENTS` in Debug and Release); build number 5 (2026-09-19).
-- [ ] D4: CloudKit sync domain — record mapping, sync-state reducer with Retry, whole-record last-writer-wins conflict policy, unsynced-mutation queue (with unit tests).
+- [x] D4: CloudKit sync domain — record mapping, sync-state reducer with Retry, whole-record last-writer-wins conflict policy, unsynced-mutation queue (with unit tests) (2026-09-20).
+- [x] D4: fix the app launch crash — explicit `cloudKitDatabase: .none` at every `ModelConfiguration` site (the iOS 27 SDK default `.automatic` crashes launch and the test host under the CloudKit entitlement); build number 6 (2026-09-20).
 - [ ] D4: `CloudKitClient` seam with deterministic fakes (server clock, failure injection, two-device pair) and a connectivity monitor seam with a deterministic fake.
 - [ ] D4: reconciler — background launch/foreground reconcile, offline mutation queue replay in order, remote merge per conflict policy, share-change observation.
 - [ ] D4: sharing use cases — `Share List` (create/reuse `CKShare`, `readWrite`), collaborator display from share metadata, `Stop Sharing` (owner only), fresh-install share acceptance via `CKShare.Metadata`.

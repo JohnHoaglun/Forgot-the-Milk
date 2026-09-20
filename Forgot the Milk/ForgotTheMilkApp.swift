@@ -45,7 +45,7 @@ struct ForgotTheMilkApp: App {
         }
         #endif
 
-        let configuration = ModelConfiguration(url: databaseURL)
+        let configuration = ModelConfiguration(url: databaseURL, cloudKitDatabase: .none)
         let container = try ModelContainer(
             for: HouseholdList.self, Category.self, CatalogItem.self, ListItem.self, Template.self,
             configurations: configuration

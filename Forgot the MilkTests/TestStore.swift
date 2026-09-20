@@ -9,7 +9,7 @@ typealias Category = Forgot_the_Milk.Category
 
 enum TestStore {
     static func makeInMemoryContainer() throws -> ModelContainer {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         return try makeContainer(configuration: configuration)
     }
 
@@ -19,7 +19,7 @@ enum TestStore {
                 try? FileManager.default.removeItem(at: directory.appendingPathComponent("store.sqlite\(suffix)"))
             }
         }
-        let configuration = ModelConfiguration(url: directory.appendingPathComponent("store.sqlite"))
+        let configuration = ModelConfiguration(url: directory.appendingPathComponent("store.sqlite"), cloudKitDatabase: .none)
         return try makeContainer(configuration: configuration)
     }
 
