@@ -2,33 +2,36 @@
 
 ## Active milestone
 
-D3 — Templates and email export. D1 (foundation and catalog) and D2 (item workflow) were delivered and verified by `scripts/verify.sh`.
+D4 — CloudKit collaboration and recovery. D1 (foundation and catalog), D2 (item workflow), and D3 (templates and email export) were delivered and verified by `scripts/verify.sh`.
 
-### D3 work breakdown
+### D4 work breakdown
 
-Existing seams: the `Template`/`TemplateEntry` models already exist (D1 schema); `ItemEntryUseCases.add(_:) -> AddResult` (`.added`/`.alreadyNeeded`/`.reopened`/`.invalid`) is the add/reopen rule that template apply must reuse; `ListGrouping` supplies the persisted category order; the UI-test DEBUG launch-argument seams exist.
+Existing seams: local mutations are owned by `ItemUseCases`/`ItemEntryUseCases`/`TemplateUseCases` over the SwiftData store; `TestStore` is a resettable in-memory SwiftData store; DEBUG deterministic fakes exist for mail and share-sheet presentation; the spec requires views to never call CloudKit directly.
 
-1. Template domain (pure, unit-tested): name validation (nonblank, 1–80 grapheme characters, case-insensitive unique per list); save snapshots only *needed* items (name, categoryID, quantity, unit, note, catalogItemID, ordering) and is unavailable with an explanation when nothing is needed; apply builds an `ItemDraft` per `TemplateEntry` and runs it through `ItemEntryUseCases.add`, reporting changed count = `added` + `reopened` (unrelated needed items untouched); rename and delete.
-2. List export domain (pure, unit-tested): plain-text body of needed items only, grouped by persisted category order, including quantity/unit and note when present, excluding completed items and collaborator metadata; deterministic string pinned by unit tests.
-3. Platform adapters with deterministic fakes: `MailComposer` (wraps `MFMailComposeViewController`, exposes `canCompose`) and `ShareSheetPresenter` (wraps `UIActivityViewController`); `EmailExportService` uses mail when configured, otherwise presents the same generated text through the share sheet.
-4. UI: list toolbar menu providing `Save as template` and `Apply template` (with the template list), name-entry sheet with validation, apply confirmation alert followed by the changed-count report, template management (rename, delete with confirmation), unavailable-state explanation when nothing is needed, and an `Email list` action. Accessibility: large targets, Dynamic Type, and VoiceOver labels for every new surface.
-5. UI tests: save/apply (changed-count report)/rename/delete flows, export via share-sheet fake and via mail-configured fake, and Dynamic Type/VoiceOver passes for the new surfaces.
-6. Docs (CHANGELOG, ARCHITECTURE, DECISIONS), build number bump, `scripts/verify.sh` green, atomic commit, push.
+1. Entitlements (done 2026-09-19): `Forgot the Milk.entitlements` declares the spec-mandated container `iCloud.com.hoaglun.forgotthemilk` plus `com.apple.developer.icloud-services` = `CloudKit` (per Apple's entitlements documentation and Xcode's CloudKit capability template); `CODE_SIGN_ENTITLEMENTS` wired into the app target's Debug and Release.
+2. CloudKit sync domain (pure, unit-tested): record mapping for every persisted model (stable UUIDs for local identity; `CKRecordID`s and share metadata persisted separately; `createdAt`/`updatedAt` plus a monotonic ordering field on user-editable records); a sync-state reducer (idle, reconciling, and recoverable error with plain-language message plus Retry); conflict policy = whole-record last-writer-wins by CloudKit server modification timestamp; a local unsynced mutation that CloudKit rejects or cannot reconcile is never silently discarded (queued and surfaced with Retry).
+3. CloudKit client seam (`CloudKitClient` protocol wrapping `CKContainer`/`CKDatabase`/`CKShare`) with deterministic fakes: controllable server clock and modification timestamps, injectable auth/permission/quota/network/partial-failure errors, and a two-device fake pair for contract tests.
+4. Connectivity monitor seam with a deterministic fake.
+5. Reconciler: load local immediately on launch/foreground, then reconcile CloudKit in the background; offline mutation queue replayed in order when connectivity returns; incoming remote changes merged per the conflict policy; share-change observation while active and refresh on foreground return.
+6. Sharing use cases: `Share List` creates or reuses a `CKShare` (default `readWrite`; no read-only choice in v1) and presents the system share sheet; collaborators and permission levels displayed from share metadata; `Stop Sharing` (owner only) leaves the owner's local list intact and explains that collaborators lose access; accepting a `CKShare` invitation after a fresh install is supported by preserving and handling `CKShare.Metadata` through launch/activation.
+7. Settings UI: iCloud/account status, collaborators, `Share List`, `Stop Sharing` (owner only); when iCloud is unavailable, plain-language state with local editing still enabled and sharing controls disabled with a recovery instruction; non-blocking sync status plus Retry; existing unit-system and About/privacy entries unchanged. Accessibility: large targets, Dynamic Type, and VoiceOver labels for every new surface.
+8. Tests: unit (sync-state reducer, retry behavior, conflict policy, queue ordering); repository/integration (offline mutations queued and replayed in order; incoming remote changes merge per the conflict policy, through the fake client); CloudKit contract (share creation/acceptance, permission display, partial failures, conflict, stop-share); UI (share flow via fakes, status/Retry surfaces, Dynamic Type and VoiceOver passes). Maintain a separately gated manual two-Apple-ID smoke checklist.
+9. Docs (CHANGELOG, ARCHITECTURE, DECISIONS), build number bump, `scripts/verify.sh` green, atomic commit, push.
 
-Status (2026-09-19): steps 1–5 implemented; full gate passed (build, 20+ unit tests, 23 UI tests green); docs updated and build number 4 committed. **D3 closed.**
+Status (2026-09-19): step 1 delivered (build number 5, simulator build green). Steps 2–9 open.
 
-Spec anchors: §4.3 (templates), §4.5 (email export), rule 9 (a template snapshots needed-item selections, never completion state), and the D3 acceptance criteria (snapshot metadata without completion state; apply leaves unrelated items and reports changed count; needed-only category-grouped export; sharing/copying works without a configured Mail account).
+Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persistence as source of truth, background reconcile on launch/foreground, recoverable error states with Retry, OSLog without notes/identities/share URLs), §6 D4 acceptance criteria, §7 (sync-state reducer and retry unit tests; offline queue replay and conflict merge integration coverage; CloudKit contract fake-client tests; manual two-Apple-ID checklist), §8 (container/bundle decision, `readWrite` default, no read-only choice, fresh-install share acceptance).
 
 ## Delivery sequence
 
 1. D1 (delivered): app shell, local model, deterministic catalog, persisted list behavior.
 2. D2 (delivered): catalog picker, custom items, metadata, category order, accessibility.
-3. D3: reusable templates and plain-text email/share-sheet export.
-4. D4: CloudKit sharing, invitations, offline reconciliation, and recovery states.
+3. D3 (delivered): reusable templates and plain-text email/share-sheet export.
+4. D4 (active): CloudKit sharing, invitations, offline reconciliation, and recovery states.
 
 ## Blockers
 
-No implementation blocker is currently recorded. Before real D4 validation, configure the App ID, CloudKit container, and signed iCloud entitlements.
+No implementation blocker is currently recorded. The CloudKit entitlements are committed (step 1), but before real D4 validation the container `iCloud.com.hoaglun.forgotthemilk` must be provisioned in the developer account and the entitlements plus privacy strings verified in a signed development build (spec release gate).
 
 ## Verification gate
 

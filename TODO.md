@@ -16,8 +16,13 @@
 - [x] D3: UI tests for template and export flows; Dynamic Type and VoiceOver pass for new surfaces.
 - [x] D3: final end-to-end `scripts/verify.sh` run to close the slice (build + unit + UI tests green 2026-09-19).
 
-## Later
-
-- [ ] D4 CloudKit sharing and reconciliation.
+- [x] D4: CloudKit entitlements wired (`Forgot the Milk.entitlements` with container `iCloud.com.hoaglun.forgotthemilk`, `com.apple.developer.icloud-services` = `CloudKit`, `CODE_SIGN_ENTITLEMENTS` in Debug and Release); build number 5 (2026-09-19).
+- [ ] D4: CloudKit sync domain — record mapping, sync-state reducer with Retry, whole-record last-writer-wins conflict policy, unsynced-mutation queue (with unit tests).
+- [ ] D4: `CloudKitClient` seam with deterministic fakes (server clock, failure injection, two-device pair) and a connectivity monitor seam with a deterministic fake.
+- [ ] D4: reconciler — background launch/foreground reconcile, offline mutation queue replay in order, remote merge per conflict policy, share-change observation.
+- [ ] D4: sharing use cases — `Share List` (create/reuse `CKShare`, `readWrite`), collaborator display from share metadata, `Stop Sharing` (owner only), fresh-install share acceptance via `CKShare.Metadata`.
+- [ ] D4: Settings UI — iCloud/account status, collaborators, share/stop-sharing controls, offline and error states with Retry; accessibility pass (large targets, Dynamic Type, VoiceOver).
+- [ ] D4: CloudKit contract tests (fake client: share creation/acceptance, permission display, partial failures, conflict, stop-share), UI tests for share and status surfaces, manual two-Apple-ID smoke checklist.
+- [ ] D4: final end-to-end `scripts/verify.sh` run plus signed-build entitlement verification to close the slice.
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.
