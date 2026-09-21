@@ -703,12 +703,23 @@ final class Forgot_the_MilkUITests: XCTestCase {
             let value = (nameField.value as? String) ?? ""
             return value.isEmpty || value == placeholder
         }
+        waitUntil(timeout: 5, description: "Keyboard backspace key is hittable") {
+            app.keyboards.firstMatch.keys["delete"].isHittable
+        }
         var taps = 0
         let deadline = Date().addingTimeInterval(30)
         while Date() < deadline, !cleared() {
-            backspace.tap()
+            // Re-query each pass and tap only when hittable: a stale element
+            // reference or a key still settling can fail the AX
+            // scroll-to-visible action that tap() performs.
+            let key = app.keyboards.firstMatch.keys["delete"]
+            guard key.isHittable else {
+                Thread.sleep(forTimeInterval: 0.2)
+                continue
+            }
+            key.tap()
             taps += 1
-            Thread.sleep(forTimeInterval: 1.0)
+            Thread.sleep(forTimeInterval: 0.5)
         }
         XCTAssertTrue(cleared(), "Name field should be cleared before validating the empty state (taps: \(taps), last value: \(nameField.value as? String ?? "nil"))")
 
