@@ -32,8 +32,7 @@ final class FakeCloudKitServer {
     }
 
     @discardableResult
-    func remove(_ entityType: SyncEntityType, _ entityID: UUID) -> Date? {
-        guard records[entityType]?[entityID] != nil else { return nil }
+    func remove(_ entityType: SyncEntityType, _ entityID: UUID) -> Date {
         let stamp = serverNow
         records[entityType, default: [:]][entityID] = nil
         tombstones[entityType, default: [:]][entityID] = stamp
@@ -43,7 +42,7 @@ final class FakeCloudKitServer {
     func snapshot(for deviceID: String) -> SyncPullResult {
         var fetched: [FetchedSyncRecord] = []
         for type in SyncEntityType.allCases {
-            for (entityID, entry) in records[type] ?? [:] {
+            for entry in (records[type] ?? [:]).values {
                 fetched.append(FetchedSyncRecord(
                     record: entry.record,
                     serverModifiedAt: entry.serverModifiedAt,
@@ -123,6 +122,8 @@ final class FakeCloudKitClient: CloudKitClient {
     var authentication: CloudKitAuthStatus = .authorized
     var onShareChange: ((ShareInfo) -> Void)?
     var fetchFailure: CloudKitClientError?
+    private(set) var fetchCallCount = 0
+    var fetchSuspender: ((CheckedContinuation<Void, Never>) -> Void)?
     var saveFailure: CloudKitClientError?
     var deleteFailure: CloudKitClientError?
     var shareFailure: CloudKitClientError?
@@ -154,6 +155,11 @@ final class FakeCloudKitClient: CloudKitClient {
     }
 
     func fetchSyncRecords() async -> Result<SyncPullResult, CloudKitClientError> {
+        fetchCallCount += 1
+        if let suspender = fetchSuspender {
+            fetchSuspender = nil
+            await withCheckedContinuation { suspender($0) }
+        }
         guard isAuthorized else { return .failure(.notAuthenticated) }
         if let failure = fetchFailure {
             fetchFailure = nil
@@ -192,9 +198,8 @@ final class FakeCloudKitClient: CloudKitClient {
         }
         var accepted: Set<UUID> = []
         for request in requests where !deleteRejections.contains(request.entityID) {
-            if server.remove(request.entityType, request.entityID) != nil {
-                accepted.insert(request.entityID)
-            }
+            server.remove(request.entityType, request.entityID)
+            accepted.insert(request.entityID)
         }
         deleteRejections = []
         return .success(accepted)

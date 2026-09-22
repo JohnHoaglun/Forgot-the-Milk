@@ -6,6 +6,7 @@ import SwiftUI
 struct ForgotTheMilkApp: App {
     private let container: ModelContainer
     private let export: EmailExport
+    private let sync: SyncCoordinator
 
     init() {
         do {
@@ -14,12 +15,28 @@ struct ForgotTheMilkApp: App {
             fatalError("Failed to create the model container: \(error)")
         }
         export = EmailExportFactory.make()
+        sync = SyncCoordinator(
+            context: container.mainContext,
+            client: Self.makeCloudKitClient(),
+            connectivity: SystemConnectivityMonitor()
+        )
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(container: container, export: export)
+            RootView(container: container, export: export, sync: sync)
         }
+    }
+
+    private static func makeCloudKitClient() -> any CloudKitClient {
+        #if DEBUG
+        // DEBUG-only launch argument seam: "fakeCloudKit" routes sync to an
+        // in-memory fake client for deterministic UI testing.
+        if CommandLine.arguments.contains("fakeCloudKit") {
+            return FakeCloudKitClient(deviceID: "app")
+        }
+        #endif
+        return RealCloudKitClient()
     }
 
     private static let databaseName = "ForgotTheMilk.sqlite"
@@ -58,6 +75,9 @@ struct ForgotTheMilkApp: App {
 struct RootView: View {
     let container: ModelContainer
     let export: EmailExport
+    let sync: SyncCoordinator
+
+    @Environment(\.scenePhase) private var scenePhase
 
     #if DEBUG
     private var debugTypeSize: DynamicTypeSize? {
@@ -86,6 +106,14 @@ struct RootView: View {
     var body: some View {
         let base = root
             .modelContainer(container)
+            .task {
+                sync.start()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    sync.foreground()
+                }
+            }
         #if DEBUG
         if let debugState = export.debugState {
             base.overlay { DebugExportSheetHost(state: debugState) }

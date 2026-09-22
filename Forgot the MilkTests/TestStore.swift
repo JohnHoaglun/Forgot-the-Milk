@@ -27,6 +27,10 @@ enum TestStore {
         container.mainContext
     }
 
+    static func makePlainContext(_ container: ModelContainer) -> ModelContext {
+        ModelContext(container)
+    }
+
     private static func makeContainer(configuration: ModelConfiguration) throws -> ModelContainer {
         try ModelContainer(
             for: HouseholdList.self, Category.self, CatalogItem.self, ListItem.self, Template.self,

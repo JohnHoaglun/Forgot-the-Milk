@@ -17,7 +17,7 @@ struct ConflictResolution: Equatable {
     let newBaseline: Date?
 }
 
-struct ConflictPolicy {
+nonisolated struct ConflictPolicy {
     func resolve(local: SyncRecord?, localIsDirty: Bool, baseline: Date?, remote: RemoteRecord?) -> ConflictResolution {
         guard let remote else {
             guard local != nil else {
