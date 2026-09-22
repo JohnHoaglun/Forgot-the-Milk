@@ -15,10 +15,12 @@ struct ForgotTheMilkApp: App {
             fatalError("Failed to create the model container: \(error)")
         }
         export = EmailExportFactory.make()
+        let dependencies = Self.makeSyncDependencies()
         sync = SyncCoordinator(
             context: container.mainContext,
-            client: Self.makeCloudKitClient(),
-            connectivity: SystemConnectivityMonitor()
+            client: dependencies.client,
+            connectivity: SystemConnectivityMonitor(),
+            shareSheet: dependencies.shareSheet
         )
     }
 
@@ -28,15 +30,22 @@ struct ForgotTheMilkApp: App {
         }
     }
 
-    private static func makeCloudKitClient() -> any CloudKitClient {
+    private static func makeSyncDependencies() -> (client: any CloudKitClient, shareSheet: any ShareSheetPresenting) {
         #if DEBUG
         // DEBUG-only launch argument seam: "fakeCloudKit" routes sync to an
-        // in-memory fake client for deterministic UI testing.
+        // in-memory fake client for deterministic UI testing, and
+        // "fakeCloudKitUnavailable" additionally reports iCloud as
+        // unavailable. The system share sheet is replaced with a no-op
+        // presenter in that mode.
         if CommandLine.arguments.contains("fakeCloudKit") {
-            return FakeCloudKitClient(deviceID: "app")
+            let client = FakeCloudKitClient(deviceID: "app")
+            if CommandLine.arguments.contains("fakeCloudKitUnavailable") {
+                client.authentication = .unavailable
+            }
+            return (client, NoopShareSheetPresenter())
         }
         #endif
-        return RealCloudKitClient()
+        return (RealCloudKitClient(), SystemShareSheetPresenter())
     }
 
     private static let databaseName = "ForgotTheMilk.sqlite"
@@ -109,6 +118,11 @@ struct RootView: View {
             .task {
                 sync.start()
             }
+            .onOpenURL { url in
+                Task {
+                    await sync.acceptShareURL(url)
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     sync.foreground()
@@ -129,12 +143,12 @@ struct RootView: View {
     private var root: some View {
         #if DEBUG
         if let size = debugTypeSize {
-            ListView(export: export).dynamicTypeSize(size)
+            ListView(export: export, sync: sync).dynamicTypeSize(size)
         } else {
-            ListView(export: export)
+            ListView(export: export, sync: sync)
         }
         #else
-        ListView(export: export)
+        ListView(export: export, sync: sync)
         #endif
     }
 }

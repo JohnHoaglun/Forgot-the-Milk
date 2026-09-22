@@ -224,6 +224,7 @@ struct CloudKitClientTests {
         #expect(expectFailure(await client.deleteRecords([SyncDeleteRequest(entityType: .listItem, entityID: itemID)]), .notAuthenticated))
         #expect(expectFailure(await client.createShare(defaultParticipantPermission: .readWrite), .notAuthenticated))
         #expect(expectFailure(await client.fetchShareInfo(), .notAuthenticated))
+        #expect(expectFailure(await client.acceptShareURL(URL(string: "https://icloud.example/share/1")!), .notAuthenticated))
         #expect(expectFailure(await client.deleteShare(), .notAuthenticated))
 
         client.authentication = .authorized
@@ -272,7 +273,10 @@ struct CloudKitClientTests {
         ])
 
         guard let otherPull = expectSuccess(await pair.collaborator.fetchShareInfo()) else { return }
-        #expect(otherPull == repulled)
+        #expect(otherPull?.shareURL == repulled.shareURL)
+        #expect(otherPull?.participants == repulled.participants)
+        #expect(repulled.isOwner == true)
+        #expect(otherPull?.isOwner == false)
     }
 
     @Test func fetchShareInfoWithoutShareReturnsNil() async {
@@ -319,11 +323,32 @@ struct CloudKitClientTests {
         #expect(ownerChanges.count == 1)
         #expect(collaboratorChanges.count == 1)
         let updated = ownerChanges.first
-        #expect(updated == collaboratorChanges.first)
+        #expect(updated?.participants == collaboratorChanges.first?.participants)
+        #expect(updated?.shareURL == collaboratorChanges.first?.shareURL)
+        #expect(updated?.isOwner == true)
+        #expect(collaboratorChanges.first?.isOwner == false)
         #expect(updated?.participants == [
             ShareParticipant(name: "owner", isOwner: true, permission: .readWrite, status: .accepted),
             ShareParticipant(name: "Ada", isOwner: false, permission: .readOnly, status: .invited)
         ])
         #expect(created.participants.count == 1)
+    }
+
+    @Test func acceptShareURLReturnsPerDeviceShareInfo() async {
+        let pair = FakeCloudKitClient.pair()
+        guard let created = expectSuccess(await pair.owner.createShare(defaultParticipantPermission: .readWrite)) else { return }
+
+        guard let accepted = expectSuccess(await pair.collaborator.acceptShareURL(created.shareURL)) else { return }
+        #expect(accepted.shareURL == created.shareURL)
+        #expect(accepted.participants == created.participants)
+        #expect(accepted.isOwner == false)
+
+        guard let ownerAccepted = expectSuccess(await pair.owner.acceptShareURL(created.shareURL)) else { return }
+        #expect(ownerAccepted.isOwner == true)
+
+        _ = expectFailure(
+            await pair.collaborator.acceptShareURL(URL(string: "https://icloud.example/share/unknown")!),
+            .unknown("Unknown share URL")
+        )
     }
 }

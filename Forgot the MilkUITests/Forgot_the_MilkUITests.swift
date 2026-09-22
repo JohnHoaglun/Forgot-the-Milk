@@ -810,4 +810,116 @@ final class Forgot_the_MilkUITests: XCTestCase {
         app.buttons["email-list-button"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["export-body-text"].waitForExistence(timeout: 5))
     }
+
+    // MARK: - D4 sharing (DEBUG fakes)
+
+    private func openSettings() {
+        let byID = app.buttons["settings-button"]
+        let button = byID.waitForExistence(timeout: 5) ? byID : app.buttons["Settings"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "Settings button should be visible")
+        button.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settings-account-status"].waitForExistence(timeout: 5),
+            "Settings screen should be visible"
+        )
+    }
+
+    /// Waits until the settings row identified by `identifier` has an
+    /// accessibility label containing `text`. LabeledContent rows expose a
+    /// combined "Label, Value" label rather than separate value elements.
+    private func settingsRow(_ identifier: String, contains text: String, timeout: TimeInterval = 5) -> Bool {
+        let row = app.descendants(matching: .any)[identifier]
+        waitUntil(timeout) {
+            (row.label ?? "").contains(text)
+        }
+        return (row.label ?? "").contains(text)
+    }
+
+    func testSettingsShowsUnsharedStateInFakeMode() {
+        launch(extraArguments: ["fakeCloudKit"])
+        openSettings()
+
+        XCTAssertTrue(settingsRow("settings-account-status", contains: "Signed in"), "Account should report signed in")
+        XCTAssertTrue(settingsRow("settings-sync-status", contains: "Up to date"), "Sync should settle to up to date")
+
+        XCTAssertTrue(app.descendants(matching: .any)["settings-not-shared"].waitForExistence(timeout: 5))
+        let shareButton = app.buttons["settings-share-list-button"].firstMatch
+        XCTAssertTrue(shareButton.exists, "Share List button should be visible")
+        XCTAssertTrue(shareButton.isEnabled, "Share List should be enabled while signed in")
+        XCTAssertFalse(app.buttons["settings-stop-sharing-button"].exists, "Stop Sharing should not be visible without a share")
+
+        XCTAssertTrue(app.descendants(matching: .any)["settings-unit-system-picker"].exists, "Unit system picker should be visible")
+        XCTAssertTrue(app.descendants(matching: .any)["settings-about-text"].exists, "About text should be visible")
+    }
+
+    func testShareAndStopSharingInFakeMode() {
+        launch(extraArguments: ["fakeCloudKit"])
+        openSettings()
+
+        let shareButton = app.buttons["settings-share-list-button"].firstMatch
+        XCTAssertTrue(shareButton.waitForExistence(timeout: 5))
+        shareButton.tap()
+
+        let ownerRow = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "app (Owner)"))
+            .firstMatch
+        XCTAssertTrue(ownerRow.waitForExistence(timeout: 5), "Owner participant row should be visible after sharing")
+        let permissionRow = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Can edit"))
+            .firstMatch
+        XCTAssertTrue(permissionRow.waitForExistence(timeout: 5), "Owner should have edit permission")
+        let stopButton = app.buttons["settings-stop-sharing-button"].firstMatch
+        XCTAssertTrue(stopButton.waitForExistence(timeout: 5), "Stop Sharing should be visible for the owner")
+        XCTAssertFalse(app.descendants(matching: .any)["settings-not-shared"].exists)
+
+        stopButton.tap()
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Stop sharing confirmation should be visible")
+        XCTAssertTrue(
+            alert.staticTexts["Your list stays on this device. Collaborators lose access to the shared list."].exists,
+            "Confirmation should explain the outcome"
+        )
+        alert.buttons["Stop Sharing"].firstMatch.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settings-not-shared"].waitForExistence(timeout: 5),
+            "Unshared state should return after stopping sharing"
+        )
+        XCTAssertFalse(app.buttons["settings-stop-sharing-button"].exists)
+
+        app.navigationBars["Settings"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible")
+    }
+
+    func testSettingsShowsUnavailableStateWithDisabledSharing() {
+        launch(extraArguments: ["fakeCloudKit", "fakeCloudKitUnavailable"])
+        openSettings()
+
+        XCTAssertTrue(settingsRow("settings-account-status", contains: "Unavailable"), "Account should report unavailable")
+        XCTAssertTrue(settingsRow("settings-sync-status", contains: "iCloud sign-in needed"), "Sync should explain the failure")
+
+        let shareButton = app.buttons["settings-share-list-button"].firstMatch
+        XCTAssertTrue(shareButton.waitForExistence(timeout: 5), "Share List button should still be visible")
+        XCTAssertFalse(shareButton.isEnabled, "Share List should be disabled while iCloud is unavailable")
+        XCTAssertFalse(app.buttons["settings-stop-sharing-button"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-sharing-recovery-hint"].exists, "Recovery hint should be visible")
+    }
+
+    func testDynamicTypeSettingsSurface() {
+        launch(typeSize: "accessibility1", extraArguments: ["fakeCloudKit"])
+        openSettings()
+
+        XCTAssertTrue(app.descendants(matching: .any)["settings-not-shared"].waitForExistence(timeout: 5))
+        let shareButton = app.descendants(matching: .any)["settings-share-list-button"]
+        XCTAssertTrue(shareButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(shareButton.isHittable)
+
+        let about = app.descendants(matching: .any)["settings-about-text"]
+        var scrolled = 0
+        while !about.exists && scrolled < 6 {
+            app.swipeUp()
+            scrolled += 1
+        }
+        XCTAssertTrue(about.exists, "About text should be reachable at large text")
+    }
 }

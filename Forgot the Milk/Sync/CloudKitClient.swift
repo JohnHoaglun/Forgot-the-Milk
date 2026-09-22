@@ -39,6 +39,12 @@ struct ShareParticipant: Hashable, Codable, Equatable {
 struct ShareInfo: Equatable {
     let shareURL: URL
     var participants: [ShareParticipant]
+    let isOwner: Bool
+}
+
+struct ListShare: Codable, Equatable {
+    var shareURL: URL
+    var isOwner: Bool
 }
 
 struct FetchedSyncRecord: Equatable {
@@ -89,6 +95,7 @@ protocol CloudKitClient: AnyObject {
     func deleteRecords(_ requests: [SyncDeleteRequest]) async -> Result<Set<UUID>, CloudKitClientError>
     func createShare(defaultParticipantPermission: SharePermission) async -> Result<ShareInfo, CloudKitClientError>
     func fetchShareInfo() async -> Result<ShareInfo?, CloudKitClientError>
+    func acceptShareURL(_ url: URL) async -> Result<ShareInfo, CloudKitClientError>
     func deleteShare() async -> Result<Void, CloudKitClientError>
     var onShareChange: ((ShareInfo) -> Void)? { get set }
 }

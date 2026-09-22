@@ -30,6 +30,7 @@ struct ReconcileReport: Equatable {
     var pulledCount: Int = 0
     var rejectedCount: Int = 0
     var remainingPendingCount: Int = 0
+    var sharedHouseholdListIDs: Set<UUID> = []
     var failure: SyncErrorKind?
     var syncedAt: Date?
 }

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ListView: View {
     let export: EmailExport
+    let sync: SyncCoordinator
 
     @Query private var lists: [HouseholdList]
     @Query private var categories: [Category]
@@ -25,7 +26,7 @@ struct ListView: View {
     @State private var applyReport: ApplyReport?
 
     private var list: HouseholdList? {
-        lists.first
+        lists.first { $0.id == sync.activeListID } ?? lists.first
     }
 
     private var grouped: GroupedList {
@@ -100,6 +101,14 @@ struct ListView: View {
                 }
                 .accessibilityIdentifier("edit-categories-button")
                 .accessibilityHint("Reorder the categories on this list")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    SettingsView(sync: sync)
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                        .accessibilityIdentifier("settings-button")
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 templatesMenu

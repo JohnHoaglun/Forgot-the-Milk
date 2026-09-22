@@ -18,7 +18,7 @@ Existing seams: local mutations are owned by `ItemUseCases`/`ItemEntryUseCases`/
 8. Tests: unit (sync-state reducer, retry behavior, conflict policy, queue ordering); repository/integration (offline mutations queued and replayed in order; incoming remote changes merge per the conflict policy, through the fake client); CloudKit contract (share creation/acceptance, permission display, partial failures, conflict, stop-share); UI (share flow via fakes, status/Retry surfaces, Dynamic Type and VoiceOver passes). Maintain a separately gated manual two-Apple-ID smoke checklist.
 9. Docs (CHANGELOG, ARCHITECTURE, DECISIONS), build number bump, `scripts/verify.sh` green, atomic commit, push.
 
-Status (2026-09-21): steps 1–5 delivered (entitlements, sync domain, `CloudKitClient` seam with deterministic fakes, connectivity seam with deterministic fake, real `CKContainer` adapter + reconciler + coordinator with app wiring and 11 unit tests); build number 8. Steps 6–9 open.
+Status (2026-09-21): steps 1–8 delivered (entitlements; sync domain; `CloudKitClient` seam with deterministic fakes; connectivity seam with deterministic fake; real `CKContainer` adapter + reconciler + coordinator with app wiring; sharing use cases — `startSharing`/`stopSharing`/`acceptShareURL` with `ListShare` metadata persistence and active-list resolution; settings UI with unavailable-state recovery instruction; unit, contract, and fake-driven UI coverage, including the share round trip and accessibility-size pass). Build number 9. Remaining: the manual two-Apple-ID smoke checklist (gated on signed-build entitlement verification) and the final end-to-end `scripts/verify.sh` run to close the slice.
 
 Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persistence as source of truth, background reconcile on launch/foreground, recoverable error states with Retry, OSLog without notes/identities/share URLs), §6 D4 acceptance criteria, §7 (sync-state reducer and retry unit tests; offline queue replay and conflict merge integration coverage; CloudKit contract fake-client tests; manual two-Apple-ID checklist), §8 (container/bundle decision, `readWrite` default, no read-only choice, fresh-install share acceptance).
 
@@ -31,7 +31,7 @@ Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persi
 
 ## Blockers
 
-No implementation blocker is currently recorded. The CloudKit entitlements are committed (step 1), but before real D4 validation the container `iCloud.com.hoaglun.forgotthemilk` must be provisioned in the developer account and the entitlements plus privacy strings verified in a signed development build (spec release gate).
+No implementation blocker is currently recorded. The CloudKit entitlements are committed (step 1) and the container `iCloud.com.hoaglun.forgotthemilk` is reported provisioned in the developer account (Xcode account screen shows one enabled iCloud container, reported 2026-09-21; not independently verified in the repo). Before real D4 validation is claimed, the entitlements must be verified in a signed development build and the manual two-Apple-ID sharing smoke must be executed (spec release gate).
 
 ## Verification gate
 

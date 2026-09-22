@@ -159,4 +159,17 @@ struct SyncReconcilerTests {
         _ = await reconcilerB.reconcile()
         #expect(try listItems(contextB).isEmpty)
     }
+
+    @Test func reconcileWithoutIcAccountReportsAuthenticationFailure() async throws {
+        let contextA = try makeContext()
+        let fixture = TestFixtures.makeList(in: contextA)
+        let (owner, _) = FakeCloudKitClient.pair()
+        owner.authentication = .unavailable
+
+        let report = await SyncReconciler(context: contextA, client: owner, defaults: scratchDefaults()).reconcile()
+        #expect(report.failure == .authentication)
+        #expect(report.remainingPendingCount == 0)
+        #expect(owner.server.snapshot(for: "owner").records.isEmpty)
+        _ = fixture
+    }
 }

@@ -29,7 +29,7 @@ struct SyncReconciler {
 
         let auth = await client.authenticationStatus()
         guard auth == .authorized else {
-            if auth == .restricted {
+            if auth == .restricted || auth == .unavailable {
                 report.failure = .authentication
             }
             return report
@@ -39,6 +39,11 @@ struct SyncReconciler {
         switch await client.fetchSyncRecords() {
         case .success(let result):
             pull = result
+            report.sharedHouseholdListIDs = Set(
+                pull.records
+                    .filter { $0.shared && $0.record.type == .householdList }
+                    .map(\.record.id)
+            )
         case .failure(let error):
             report.failure = error.syncErrorKind
             return report

@@ -8,13 +8,19 @@ final class FakeCloudKitServer {
         let writtenBy: String
     }
 
+    struct StoredShare: Equatable {
+        let shareURL: URL
+        var participants: [ShareParticipant]
+        let ownerDeviceID: String
+        var defaultParticipantPermission: SharePermission
+    }
+
     var serverNow: Date
-    private(set) var share: ShareInfo?
+    private(set) var share: StoredShare?
 
     private var records: [SyncEntityType: [UUID: StoredRecord]] = [:]
     private var tombstones: [SyncEntityType: [UUID: Date]] = [:]
     private var shareChangeHandlers: [String: (ShareInfo) -> Void] = [:]
-    private var defaultParticipantPermission: SharePermission = .readWrite
 
     init(serverNow: Date = Date(timeIntervalSinceReferenceDate: 1_000_000)) {
         self.serverNow = serverNow
@@ -73,44 +79,55 @@ final class FakeCloudKitServer {
 
     func createShare(ownerName: String, defaultParticipantPermission: SharePermission) -> ShareInfo {
         if share == nil {
-            self.defaultParticipantPermission = defaultParticipantPermission
             let token = UUID()
-            share = ShareInfo(
+            share = StoredShare(
                 shareURL: URL(string: "https://icloud.example/share/\(token.uuidString)")!,
-                participants: [ShareParticipant(name: ownerName, isOwner: true, permission: .readWrite, status: .accepted)]
+                participants: [ShareParticipant(name: ownerName, isOwner: true, permission: .readWrite, status: .accepted)],
+                ownerDeviceID: ownerName,
+                defaultParticipantPermission: defaultParticipantPermission
             )
         }
-        return share!
+        return shareInfo(for: ownerName)!
+    }
+
+    func shareInfo(for deviceID: String) -> ShareInfo? {
+        guard let share else { return nil }
+        return ShareInfo(
+            shareURL: share.shareURL,
+            participants: share.participants,
+            isOwner: deviceID == share.ownerDeviceID
+        )
     }
 
     func clearShare() {
         share = nil
-        defaultParticipantPermission = .readWrite
     }
 
     func addParticipant(_ name: String, permission: SharePermission? = nil, status: ShareParticipantStatus) {
-        guard var info = share else { return }
-        info.participants = info.participants.filter { $0.name != name }
-        info.participants.append(ShareParticipant(
+        guard var stored = share else { return }
+        stored.participants = stored.participants.filter { $0.name != name }
+        stored.participants.append(ShareParticipant(
             name: name,
             isOwner: false,
-            permission: permission ?? defaultParticipantPermission,
+            permission: permission ?? stored.defaultParticipantPermission,
             status: status
         ))
-        info.participants.sort {
+        stored.participants.sort {
             ($0.isOwner ? 0 : 1, $0.name) < ($1.isOwner ? 0 : 1, $1.name)
         }
-        share = info
-        broadcast(info)
+        share = stored
+        broadcast()
     }
 
     func registerShareChangeHandler(for deviceID: String, _ handler: @escaping (ShareInfo) -> Void) {
         shareChangeHandlers[deviceID] = handler
     }
 
-    private func broadcast(_ info: ShareInfo) {
-        for handler in shareChangeHandlers.values {
-            handler(info)
+    private func broadcast() {
+        for (deviceID, handler) in shareChangeHandlers {
+            if let info = shareInfo(for: deviceID) {
+                handler(info)
+            }
         }
     }
 }
@@ -216,7 +233,19 @@ final class FakeCloudKitClient: CloudKitClient {
 
     func fetchShareInfo() async -> Result<ShareInfo?, CloudKitClientError> {
         guard isAuthorized else { return .failure(.notAuthenticated) }
-        return .success(server.share)
+        return .success(server.shareInfo(for: deviceID))
+    }
+
+    func acceptShareURL(_ url: URL) async -> Result<ShareInfo, CloudKitClientError> {
+        guard isAuthorized else { return .failure(.notAuthenticated) }
+        guard let share = server.share, share.shareURL == url else {
+            return .failure(.unknown("Unknown share URL"))
+        }
+        return .success(ShareInfo(
+            shareURL: url,
+            participants: share.participants,
+            isOwner: deviceID == share.ownerDeviceID
+        ))
     }
 
     func deleteShare() async -> Result<Void, CloudKitClientError> {

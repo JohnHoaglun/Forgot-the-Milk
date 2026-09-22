@@ -31,6 +31,7 @@ final class RealCloudKitClient: CloudKitClient {
     private let defaults: UserDefaults
     private let logger = Logger(subsystem: "com.hoaglun.forgotthemilk", category: "cloudkit")
     private var householdZone: HouseholdZone?
+    private var lastObservedShare: ShareInfo?
 
     var onShareChange: ((ShareInfo) -> Void)?
 
@@ -168,7 +169,7 @@ final class RealCloudKitClient: CloudKitClient {
             }
             let shareRecordID = shareRecordID(for: zone.zoneID)
             if let existing = try await fetchShareRecord(shareRecordID, in: zone.database) {
-                guard let info = shareInfo(of: existing) else {
+                guard let info = await shareInfo(of: existing) else {
                     return .failure(.unknown("Share URL unavailable"))
                 }
                 storeShareURL(info.shareURL)
@@ -184,9 +185,9 @@ final class RealCloudKitClient: CloudKitClient {
             )
             switch saveResults[shareRecordID] {
             case .success:
-                var info = shareInfo(of: share)
+                var info = await shareInfo(of: share)
                 if info == nil, let fetched = try? await fetchShareRecord(shareRecordID, in: zone.database) {
-                    info = shareInfo(of: fetched)
+                    info = await shareInfo(of: fetched)
                 }
                 guard let info else {
                     logger.warning("Share saved but URL is unavailable")
@@ -210,12 +211,32 @@ final class RealCloudKitClient: CloudKitClient {
         }
         do {
             let metadata = try await container.shareMetadata(for: storedURL)
-            return .success(ShareInfo(shareURL: storedURL, participants: mapParticipants(of: metadata.share)))
+            let info = ShareInfo(
+                shareURL: storedURL,
+                participants: mapParticipants(of: metadata.share),
+                isOwner: await isOwner(of: metadata.share)
+            )
+            observe(info)
+            return .success(info)
         } catch let error as CKError where isMissingItem(error) {
             clearStoredShare()
+            lastObservedShare = nil
             return .success(nil)
         } catch {
             return .failure(clientError(error))
+        }
+    }
+
+    func acceptShareURL(_ url: URL) async -> Result<ShareInfo, CloudKitClientError> {
+        storeShareURL(url)
+        switch await fetchShareInfo() {
+        case .success(let info):
+            guard let info else {
+                return .failure(.unknown("Share URL unavailable"))
+            }
+            return .success(info)
+        case .failure(let error):
+            return .failure(error)
         }
     }
 
@@ -251,11 +272,30 @@ final class RealCloudKitClient: CloudKitClient {
         }
     }
 
-    private func shareInfo(of share: CKShare) -> ShareInfo? {
+    private func shareInfo(of share: CKShare) async -> ShareInfo? {
         guard let url = share.url else {
             return nil
         }
-        return ShareInfo(shareURL: url, participants: mapParticipants(of: share))
+        let info = ShareInfo(shareURL: url, participants: mapParticipants(of: share), isOwner: await isOwner(of: share))
+        observe(info)
+        return info
+    }
+
+    private func isOwner(of share: CKShare) async -> Bool {
+        guard let myRecordID = try? await container.userRecordID() else {
+            return false
+        }
+        return share.participants.contains { participant in
+            participant.userIdentity.userRecordID == myRecordID
+                && participant.role == .owner
+        }
+    }
+
+    private func observe(_ info: ShareInfo) {
+        if info != lastObservedShare {
+            lastObservedShare = info
+            onShareChange?(info)
+        }
     }
 
     private func mapParticipants(of share: CKShare) -> [ShareParticipant] {

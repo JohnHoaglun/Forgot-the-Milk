@@ -160,4 +160,12 @@ final class FakeShareSheetPresenter: ShareSheetPresenting {
         }
     }
 }
+
+/// DEBUG-only presenter for the `fakeCloudKit` launch-argument seam: the
+/// system share sheet is unavailable in deterministic UI tests, so the
+/// coordinator's Share List sheet is a no-op while the share state itself
+/// remains observable in the UI.
+final class NoopShareSheetPresenter: ShareSheetPresenting {
+    func present(items: [Any]) {}
+}
 #endif
