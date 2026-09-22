@@ -73,7 +73,18 @@ final class RealCloudKitClient: CloudKitClient {
             let zone = try await resolveHouseholdZone()
             var fetched: [FetchedSyncRecord] = []
             for type in SyncEntityType.allCases {
-                for record in try await fetchAllRecords(in: zone.database, zoneID: zone.zoneID, type: type) {
+                let records: [CKRecord]
+                do {
+                    records = try await fetchAllRecords(in: zone.database, zoneID: zone.zoneID, type: type)
+                } catch let error as CKError where Self.isTolerableQueryFailure(error, type: type) {
+                    // A zone created before the first save of a record type reports the
+                    // type as missing instead of returning an empty query page, and a
+                    // server schema that predates the queryable `updatedAt` field
+                    // rejects the query. Both mean "no usable remote data for this
+                    // type" and are repaired by the pushes that follow the pull.
+                    continue
+                }
+                for record in records {
                     guard let data = record["payload"] as? Data,
                           let syncRecord = try? Self.decoder.decode(SyncRecord.self, from: data) else {
                         logger.warning("Skipping undecodable record \(record.recordID.recordName, privacy: .public) (\(record.recordType, privacy: .public))")
@@ -89,6 +100,24 @@ final class RealCloudKitClient: CloudKitClient {
             return .success(SyncPullResult(records: fetched, deletions: []))
         } catch {
             return .failure(clientError(error))
+        }
+    }
+
+    private static func isTolerableQueryFailure(_ error: CKError, type: SyncEntityType) -> Bool {
+        let message = (error as NSError).userInfo["ServerErrorDescription"] as? String
+        switch error.code {
+        case .unknownItem:
+            // A zone created before the first save of this type reports the type as
+            // missing instead of returning an empty query page.
+            return message?.contains("Did not find record type: \(type.cloudKitType)") == true
+        case .invalidArguments:
+            // A server schema inferred before the queryable `updatedAt` field existed
+            // rejects the query ("Unknown field" / "not marked queryable"). The
+            // pushes that follow the pull repair the schema.
+            return message?.contains("Unknown field") == true
+                || message?.contains("not marked queryable") == true
+        default:
+            return false
         }
     }
 
@@ -357,17 +386,18 @@ final class RealCloudKitClient: CloudKitClient {
         for zone in candidates {
             let probe = CKQuery(
                 recordType: SyncEntityType.householdList.cloudKitType,
-                predicate: NSPredicate(value: true)
+                predicate: NSPredicate(format: "updatedAt > %@", Self.queryAnchor as NSDate)
             )
-            let (results, _) = try await container.sharedCloudDatabase.records(
+            // A probe failure (e.g. the type has never been saved in this zone)
+            // only means this candidate is not a household zone.
+            let probed = try? await container.sharedCloudDatabase.records(
                 matching: probe,
                 inZoneWith: zone.zoneID,
                 desiredKeys: nil,
                 resultsLimit: 1
             )
-            if !results.isEmpty {
-                return HouseholdZone(database: container.sharedCloudDatabase, zoneID: zone.zoneID, isShared: true)
-            }
+            guard let (results, _) = probed, !results.isEmpty else { continue }
+            return HouseholdZone(database: container.sharedCloudDatabase, zoneID: zone.zoneID, isShared: true)
         }
         let newZone = CKRecordZone(zoneName: Self.zoneName)
         let result = try await container.privateCloudDatabase.modifyRecordZones(saving: [newZone], deleting: [])
@@ -377,8 +407,15 @@ final class RealCloudKitClient: CloudKitClient {
         return HouseholdZone(database: container.privateCloudDatabase, zoneID: privateZoneID, isShared: false)
     }
 
+    private static let queryAnchor = Date(timeIntervalSinceReferenceDate: 0)
+
     private func fetchAllRecords(in database: CKDatabase, zoneID: CKRecordZone.ID, type: SyncEntityType) async throws -> [CKRecord] {
-        let query = CKQuery(recordType: type.cloudKitType, predicate: NSPredicate(value: true))
+        // Query a constant comparison on the known `updatedAt` field: zones whose
+        // record type schema was inferred from saves reject field-less predicates.
+        let query = CKQuery(
+            recordType: type.cloudKitType,
+            predicate: NSPredicate(format: "updatedAt > %@", Self.queryAnchor as NSDate)
+        )
         var all: [CKRecord] = []
         let (page, cursor) = try await database.records(
             matching: query,
@@ -419,6 +456,10 @@ final class RealCloudKitClient: CloudKitClient {
         if let data = try? Self.encoder.encode(record) {
             ckRecord["payload"] = data
         }
+        // A top-level field so the server's inferred record type schema includes a
+        // queryable field: types whose schema was inferred from `payload` alone
+        // reject queries.
+        ckRecord["updatedAt"] = record.updatedAt
         return ckRecord
     }
 

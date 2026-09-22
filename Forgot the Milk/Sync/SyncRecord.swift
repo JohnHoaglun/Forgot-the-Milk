@@ -23,6 +23,15 @@ enum SyncEntityType: String, CaseIterable, Codable, Hashable {
     }
 }
 
+enum SyncSchema {
+    /// Bumped when the server-side record shape changes so existing devices
+    /// re-push all local records with the new shape on their next reconcile.
+    /// Version 1 persisted its flag before the journal reset could be durable;
+    /// version 2 re-runs the reset for devices that recorded 1.
+    static let version = 2
+    static let versionKey = "com.hoaglun.forgotthemilk.syncSchemaVersion"
+}
+
 struct HouseholdListPayload: Hashable, Codable {
     let id: UUID
     var title: String

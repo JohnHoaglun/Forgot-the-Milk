@@ -35,6 +35,16 @@ struct SyncReconciler {
             return report
         }
 
+        if defaults.integer(forKey: SyncSchema.versionKey) < SyncSchema.version {
+            // The server-side record shape changed; drop the journal so every local
+            // record is re-pushed with the new shape and the server schema is repaired.
+            // Persist before recording the flag: a later abort must not leave the
+            // flag set while the old journal survives on disk.
+            journal = SyncJournal()
+            journal.persist(to: defaults)
+            defaults.set(SyncSchema.version, forKey: SyncSchema.versionKey)
+        }
+
         let pull: SyncPullResult
         switch await client.fetchSyncRecords() {
         case .success(let result):

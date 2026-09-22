@@ -25,7 +25,8 @@
 - [x] D4: sharing use cases — `Share List` (create/reuse `CKShare`, `readWrite`), collaborator display from share metadata, `Stop Sharing` (owner only) with confirmation, share acceptance via `acceptShareURL` with per-device `isOwner` and `ListShare` metadata persistence (delivered 2026-09-21; 6 coordinator unit tests).
 - [x] D4: Settings UI — iCloud/account status, sync status with plain-language error text and Retry, collaborators, share/stop-sharing controls, unavailable state with disabled sharing and recovery instruction; accessibility identifiers plus an accessibility-size UI pass (delivered 2026-09-21; 4 UI tests).
 - [x] D4: CloudKit contract tests (fake client: share creation/acceptance per device, stop-share, unavailable-account reconcile failure) and UI tests for the share and status surfaces (delivered 2026-09-21).
-- [ ] D4: manual two-Apple-ID smoke checklist — share, accept, edit, and stop-share on two signed devices with the real container (gated on signed-build entitlement verification; container reported provisioned 2026-09-21, unverified in repo).
-- [ ] D4: final end-to-end `scripts/verify.sh` run plus signed-build entitlement verification to close the slice.
+- [x] D4: signed-build entitlement verification and real-device sync — container `iCloud.com.hoaglun.forgotthemilk` and `com.apple.developer.icloud-services = [CloudKit]` confirmed in a signed iPhone build, and sync verified end-to-end on-device after fixing the real-server query behaviors (missing-type tolerance, queryable `updatedAt` with constant predicate, schema-version journal reset) (2026-09-22; build number 10).
+- [ ] D4: manual two-Apple-ID smoke checklist — share, accept, edit, and stop-share on two signed devices with the real container (container now verified provisioned in a signed device build, 2026-09-22).
+- [ ] D4: final end-to-end `scripts/verify.sh` run to close the slice.
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.
