@@ -29,3 +29,5 @@ Discover projects, schemes, test targets, and existing scripts before selecting 
 ## Versioning and Git safety
 
 Maintain `VERSIONS_LOCATIONS.md` as the inventory of version/build locations. Keep marketing version separate from a monotonically increasing build number; increment the build number once per completed file-changing delivery and change marketing version only for an intentional release. Xcode build settings and `Info.plist` values are authoritative. Never force-push, rewrite history, reset destructively, commit secrets/signing material, or include unrelated changes.
+
+The working copy lives on an SMB share that does not preserve POSIX mode bits; this clone has `core.fileMode false` (decision 2026-09-26), so git reports content changes only. Before committing, verify the staged diff is content-only. Any other repo-configuration change must be recorded in `DECISIONS.md` and reviewed before it is applied.
