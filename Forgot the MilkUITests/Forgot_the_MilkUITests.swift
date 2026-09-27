@@ -104,7 +104,21 @@ final class Forgot_the_MilkUITests: XCTestCase {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", label))
             .firstMatch
-        if !row.waitForExistence(timeout: 5) {
+
+        // A matching row can sit in a section below the visible area (SwiftUI
+        // List does not instantiate off-screen rows), so scroll until it
+        // appears. The keyboard covers the lower half of the screen, so the
+        // swipe must stay within the visible list area above the search bar.
+        if !row.waitForExistence(timeout: 3) {
+            let deadline = Date().addingTimeInterval(8)
+            while !row.exists && Date() < deadline {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                    .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)))
+                usleep(150_000)
+            }
+        }
+
+        if !row.exists {
             let visible = app.buttons.allElementsBoundByIndex
                 .prefix(30)
                 .map { $0.label ?? "(no label)" }
@@ -504,6 +518,56 @@ final class Forgot_the_MilkUITests: XCTestCase {
                 .matching(NSPredicate(format: "label BEGINSWITH %@", "Oat Milk,"))
                 .firstMatch.exists
         )
+    }
+
+    // MARK: - Save from edit
+
+    func testEditFormShowsSaveToCatalogOffByDefaultForOneOffItem() {
+        launch()
+        addCustomItem("Halloumi", saveToCatalog: false)
+        XCTAssertTrue(app.staticTexts["Halloumi"].exists)
+
+        openEditSheet(for: "Halloumi")
+        let toggle = app.switches["save-to-catalog-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Save to catalog toggle should be visible in the edit form")
+        XCTAssertFalse(switchIsOn(toggle), "Save to catalog toggle should be off by default when editing")
+        app.buttons["item-form-cancel-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible after cancel")
+    }
+
+    func testSaveFromEditCreatesCatalogEntryAndKeepsItem() {
+        launch()
+        addCustomItem("Mozzarella", quantity: "1", unit: "block", saveToCatalog: false)
+        XCTAssertTrue(app.staticTexts["Mozzarella"].exists)
+
+        openEditSheet(for: "Mozzarella")
+        let toggle = app.switches["save-to-catalog-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Save to catalog toggle should be visible in the edit form")
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        let deadline = Date().addingTimeInterval(2)
+        while !switchIsOn(toggle) && Date() < deadline {
+            usleep(50_000)
+        }
+        XCTAssertTrue(switchIsOn(toggle), "Save to catalog toggle should be on after tapping it")
+        app.buttons["item-form-save-button"].tap()
+        XCTAssertTrue(app.staticTexts["Mozzarella"].waitForExistence(timeout: 5), "Item should keep its place on the list")
+
+        relaunch()
+
+        openCatalogPicker()
+        catalogRow(name: "Mozzarella", label: "Mozzarella, already added")
+    }
+
+    func testEditFormHidesSaveToCatalogForLinkedItem() {
+        launch()
+        addCustomItem("Feta", saveToCatalog: true)
+        XCTAssertTrue(app.staticTexts["Feta"].exists)
+
+        openEditSheet(for: "Feta")
+        let toggle = app.switches["save-to-catalog-toggle"]
+        XCTAssertFalse(toggle.waitForExistence(timeout: 3), "Toggle should be hidden for catalog-linked items")
+        app.buttons["item-form-cancel-button"].tap()
+        XCTAssertTrue(app.buttons["add-item-button"].waitForExistence(timeout: 5), "List should be visible after cancel")
     }
 
     func testCatalogSearchFiltersEntries() {

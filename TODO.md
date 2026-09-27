@@ -31,6 +31,6 @@
 
 ## Next
 
-- [ ] D5 (active — started 2026-09-26 per owner re-sequence): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–6; the catalog-item move re-homes referencing list items and template entries; save-from-edit inherits the list item's form values). Sub-step A delivered 2026-09-26 (build 11): `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3). Next: sub-step B — save-to-catalog from the item edit form (feedback 5).
+- [ ] D5 (active — started 2026-09-26 per owner re-sequence): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–6; the catalog-item move re-homes referencing list items and template entries; save-from-edit inherits the list item's form values). Sub-step A delivered 2026-09-26 (build 11): `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3). Sub-step B delivered 2026-09-27 (build 12): save-to-catalog from the item edit form for one-off items, default OFF, create-or-reuse household entry, item keeps its place (feedback 5). Next: sub-step C — move custom catalog items between categories with re-homing of referencing list items and template entries (feedback 4).
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.

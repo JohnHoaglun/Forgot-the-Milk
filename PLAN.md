@@ -52,7 +52,7 @@ Sequencing: re-sequenced by the owner on 2026-09-26 — D5 is active now. D4 is 
 
 Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inherits the list item's current form values (name/quantity/unit/note/category) at the moment of saving, and the list item keeps its place on the list. No open questions remain on the D5 plan.
 
-### Spec changes (A-scoped changes applied 2026-09-26 with sub-step A; B/C changes pending; spec is the authority)
+### Spec changes (A-scoped changes applied 2026-09-26 with sub-step A; B-scoped §4.2 edit-form rule applied 2026-09-27 with sub-step B; C-scoped move rule pending; spec is the authority)
 
 - §2 rule 6: the ad-hoc default category becomes `Custom Added`.
 - §3: `Custom Added` added to the seeded system categories — starts empty, editable in order like other system categories, not renamable/deletable in v1.
@@ -74,8 +74,8 @@ Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inheri
 ### Suggested sub-steps (each a shippable delivery)
 
 - A: `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3) — **delivered 2026-09-26** (build 11, `scripts/verify.sh` green: unit + 36 UI tests). Seed category added with deterministic ID and `defaultOrder` 26; `ItemFormView` defaults new custom items to `Custom Added` and `Save to catalog` ON (opt-out copy updated); `ItemEntryUseCases` save-to-catalog reuses a same-category household `CatalogItem` by normalized name without overwriting its defaults.
-- B: save-to-catalog from the item edit form (feedback 5) — next.
-- C: move custom catalog items between categories (feedback 4).
+- B: save-to-catalog from the item edit form (feedback 5) — **delivered 2026-09-27** (build 12, `scripts/verify.sh` green: unit + 39 UI tests). `ItemFormView` shows a second `Save to catalog` section only in `.edit` mode for one-off items (`catalogItemID == nil`), defaulting OFF with opt-in copy; saving with it ON links the item to a created-or-reused household catalog entry built from the form's current values (same create-or-reuse rule as the add flow) and the item keeps its place on the list. `ItemEntryUseCases.update` gained `saveToCatalog:` (default `false`); the DECISIONS row supersedes the 2026-09-15 add-only row.
+- C: move custom catalog items between categories (feedback 4) — next.
 
 ## Delivery sequence
 

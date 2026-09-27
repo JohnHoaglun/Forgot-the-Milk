@@ -50,7 +50,7 @@ struct ItemEntryUseCases {
     }
 
     @discardableResult
-    func update(_ item: ListItem, with draft: ItemDraft) -> Bool {
+    func update(_ item: ListItem, with draft: ItemDraft, saveToCatalog: Bool = false) -> Bool {
         guard ItemFormValidation.isValid(draft), let categoryID = draft.categoryID else {
             return false
         }
@@ -61,6 +61,10 @@ struct ItemEntryUseCases {
         if item.categoryID != categoryID {
             item.categoryID = categoryID
             item.sortOrder = nextSortOrder(listID: item.listID, categoryID: categoryID)
+        }
+        if saveToCatalog, item.catalogItemID == nil {
+            item.catalogItemID = existingHouseholdCatalogItem(matching: item.name, in: categoryID)?.id
+                ?? createHouseholdCatalogItem(from: draft, in: categoryID)
         }
         item.updatedAt = Date()
         save()

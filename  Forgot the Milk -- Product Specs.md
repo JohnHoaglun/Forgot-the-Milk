@@ -56,7 +56,7 @@ Seed categories and catalog items from the authoritative list in [Appendix A](#a
 - Selecting a catalog entry opens details prefilled from defaults; Save adds/reopens it.
 - `Add custom item` opens the same details form with an empty name, category picker defaulting to `Custom Added`, and `Save to catalog` on by default; the form must make it obvious how to turn it off. Saving with the option on creates or reuses a reusable, synced household catalog item for future selection: if a household entry with the same category and normalized label already exists, it is reused and its defaults are never overwritten; otherwise a new one is created. Identical labels in different categories remain distinct.
 - Detail form fields: Name (required, 1–120 visible characters), Quantity (optional free text, 1–40), Unit (optional free text, 1–40), Note (optional, 1–280), Category (required). Disable Save until valid.
-- An existing list item opens this form for editing. Delete is available from the form and requires confirmation.
+- An existing list item opens this form for editing. A one-off item (no catalog entry) additionally offers `Save to catalog`, off by default; turning it on saves the form's current values (name, quantity, unit, note, category) as a household catalog entry using the same create-or-reuse rule as the add flow and links the list item to it. The list item keeps its place on the list. Delete is available from the form and requires confirmation.
 - Unit-system setting supplies the initial unit suggestion only; it never converts entered quantities.
 
 ### 4.3 Templates

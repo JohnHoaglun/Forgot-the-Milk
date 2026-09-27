@@ -135,6 +135,16 @@ struct ItemFormView: View {
                     }
                 }
 
+                if case .edit = mode, catalogItemID == nil {
+                    Section {
+                        Toggle("Save to catalog", isOn: $saveToCatalog)
+                            .accessibilityIdentifier("save-to-catalog-toggle")
+                            .accessibilityHint("Saves this item as a reusable catalog entry when on")
+                    } footer: {
+                        Text("Off by default. Turn the toggle on to save this item as a reusable catalog entry.")
+                    }
+                }
+
                 if !isValid {
                     Section {
                         ForEach(validationIssues, id: \.self) { issue in
@@ -206,7 +216,7 @@ struct ItemFormView: View {
         let useCases = ItemEntryUseCases(context: modelContext)
         switch mode {
         case .edit(let item):
-            _ = useCases.update(item, with: draft)
+            _ = useCases.update(item, with: draft, saveToCatalog: saveToCatalog)
         default:
             _ = useCases.add(draft, to: list.id, saveToCatalog: saveToCatalog)
         }
