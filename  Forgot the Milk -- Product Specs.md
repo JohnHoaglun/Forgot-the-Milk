@@ -77,6 +77,16 @@ Seed categories and catalog items from the authoritative list in [Appendix A](#a
 - `Email list` exports needed items only as a plain-text, category-grouped body suitable for printing. Include quantity/unit and note; exclude completed items and collaborator metadata.
 - Use `MFMailComposeViewController` when mail is configured. Otherwise generate the same text and present the system share sheet so it can be copied or sent by another mail app.
 
+### 4.6 Catalog management
+
+- A household catalog item (a custom item saved to the catalog) can be moved between categories. Built-in catalog items stay pinned to their seed categories and offer no move affordance.
+- The move is offered from the catalog picker: a trailing swipe on a household row reveals `Move to…`, which presents the app's category list with the current category marked and not selectable.
+- The move re-homes everything that references the item:
+  - Every list item that references it (in any list) takes the new category — overriding a category the item had been set to manually — and moves to the bottom of that category in its list; its needed/completed state is preserved.
+  - Every template entry that references it takes the new category; entry order within the template is unchanged.
+  - One-off list items (no catalog entry) are untouched.
+- The move is a regular catalog change and syncs like any other catalog edit; it takes effect immediately on the device that made it.
+
 ## 5. Technical behavior
 
 - Separate UI, domain/use-case, persistence, and CloudKit-sync layers. Views must not call CloudKit directly.
@@ -176,7 +186,7 @@ Terminology note: "template" in these notes means the reusable household catalog
 4. The user needs a way to be able to move ItemX from category-1 to category-2 in the catalog.
 5. If a user adds a custom item to the list but not the catalog, the user should be able to tap the custom item in the active list and be able to save it to a category.
 
-Status: recorded 2026-09-26; owner review completed 2026-09-26 — the D5 plan in `PLAN.md` is confirmed with one refinement: moving a custom catalog item re-homes referencing list items and template entries to the new category. Owner decision 2026-09-26: D5 starts immediately while the D4 two-Apple-ID smoke waits for a second device. Sub-step A (notes 1–3) is delivered: its behavior changes are folded into rule 6, the information model, and section 4.2 above.
+Status: recorded 2026-09-26; owner review completed 2026-09-26 — the D5 plan in `PLAN.md` is confirmed with one refinement: moving a custom catalog item re-homes referencing list items and template entries to the new category. Owner decision 2026-09-26: D5 starts immediately while the D4 two-Apple-ID smoke waits for a second device. Sub-steps A (notes 1–3), B (note 5), and C (note 4) are delivered: A's behavior changes are folded into rule 6, the information model, and section 4.2; B's into the section 4.2 edit rule; C's into section 4.6.
 
 ## Appendix A — Seed catalog
 

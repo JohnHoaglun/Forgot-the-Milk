@@ -577,6 +577,53 @@ final class Forgot_the_MilkUITests: XCTestCase {
         XCTAssertFalse(button(withLabel: "Milk").exists)
     }
 
+    // MARK: - Catalog move
+
+    func testMoveHouseholdCatalogItemRehomesListItem() {
+        launch()
+        addCustomItem("Halloumi")
+        XCTAssertTrue(app.staticTexts["Halloumi"].exists)
+        XCTAssertTrue(staticText(withLabel: "Custom Added (1)").exists)
+
+        openCatalogPicker()
+        let row = catalogRow(name: "Halloumi", label: "Halloumi, already added")
+        revealRowTrailingActions(row)
+        let moveAction = app.buttons["move-catalog-action"]
+        XCTAssertTrue(moveAction.waitForExistence(timeout: 3), "Move to… should be revealed on a household row")
+        moveAction.tap()
+
+        let dairy = app.buttons["move-category-Dairy"]
+        if !dairy.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(dairy.waitForExistence(timeout: 3), "Move sheet should offer the Dairy category")
+        dairy.tap()
+
+        XCTAssertTrue(staticText(withLabel: "Dairy").waitForExistence(timeout: 5),
+                      "Picker should group the moved item under the Dairy section")
+
+        returnToList()
+        XCTAssertTrue(staticText(withLabel: "Dairy (1)").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Halloumi"].exists)
+        waitUntil(3) { !staticText(withLabel: "Custom Added (1)").exists }
+        XCTAssertFalse(staticText(withLabel: "Custom Added (1)").exists,
+                       "Custom Added header should be gone after the move")
+
+        relaunch()
+        XCTAssertTrue(staticText(withLabel: "Dairy (1)").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Halloumi"].exists)
+    }
+
+    func testMoveAffordanceHiddenForBuiltInItems() {
+        launch()
+        openCatalogPicker()
+        let row = catalogRow(name: "Milk", label: "Milk")
+        revealRowTrailingActions(row, pressDuration: 0.1)
+        XCTAssertFalse(app.buttons["move-catalog-action"].exists,
+                       "Built-in rows should offer no move action")
+        XCTAssertTrue(row.exists, "Picker row should still be visible (no navigation)")
+    }
+
     // MARK: - Category reorder
 
     func testCategoryReorderPersists() {
@@ -622,15 +669,23 @@ final class Forgot_the_MilkUITests: XCTestCase {
         XCTAssertLessThan(reopenedFruits.frame.minY, reopenedVegetables.frame.minY)
     }
 
-    /// Reveals the trailing swipe actions (Complete / Delete) for a row.
+    /// Reveals the trailing swipe actions (Complete / Delete) for a list row.
     /// A press-and-drag over the row's leading area (starting on the
     /// completion toggle) is recognized as the row's swipe gesture; a long
     /// drag from the row's trailing edge misfires and toggles completion.
     private func revealTrailingActions(onItem name: String) {
         let marker = button(withLabel: "Mark \(name) as completed")
         XCTAssertTrue(marker.waitForExistence(timeout: 5), "Row for \(name) should be visible")
-        marker.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
-            .press(forDuration: 0.5, thenDragTo: marker.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)))
+        revealRowTrailingActions(marker)
+    }
+
+    /// Press-and-drag reveal for any row (list rows and catalog-picker rows).
+    /// The default 0.5 s press reveals the swipe actions on plain rows; for
+    /// built-in picker rows (NavigationLinks) a longer hold reads as a tap and
+    /// navigates into the form, so pass a shorter press there.
+    private func revealRowTrailingActions(_ row: XCUIElement, pressDuration: TimeInterval = 0.5) {
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .press(forDuration: pressDuration, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)))
     }
 
     private func switchIsOn(_ element: XCUIElement) -> Bool {

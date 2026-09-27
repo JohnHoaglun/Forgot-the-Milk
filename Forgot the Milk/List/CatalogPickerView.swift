@@ -8,7 +8,10 @@ struct CatalogPickerView: View {
     @Query private var catalogItems: [CatalogItem]
     @Query private var items: [ListItem]
 
+    @Environment(\.modelContext) private var modelContext
+
     @State private var searchQuery = ""
+    @State private var moveTarget: CatalogItem?
 
     private struct PickerEntry: Identifiable {
         enum Status {
@@ -53,6 +56,9 @@ struct CatalogPickerView: View {
         .searchable(text: $searchQuery, prompt: "Search the catalog")
         .navigationTitle("Add Item")
         .accessibilityIdentifier("catalog-picker")
+        .sheet(item: $moveTarget) { catalogItem in
+            MoveCatalogItemSheet(item: catalogItem, list: list)
+        }
     }
 
     private struct PickerSection: Identifiable {
@@ -104,6 +110,25 @@ struct CatalogPickerView: View {
 
     @ViewBuilder
     private func entryRow(for entry: PickerEntry) -> some View {
+        if entry.catalogItem.scope == .household {
+            row(for: entry)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button {
+                        moveTarget = entry.catalogItem
+                    } label: {
+                        Label("Move to…", systemImage: "arrow.left.arrow.right")
+                    }
+                    .tint(.indigo)
+                    .accessibilityIdentifier("move-catalog-action")
+                    .accessibilityHint("Choose a new category for this catalog item")
+                }
+        } else {
+            row(for: entry)
+        }
+    }
+
+    @ViewBuilder
+    private func row(for entry: PickerEntry) -> some View {
         switch entry.status {
         case .alreadyNeeded:
             rowContent(for: entry)
