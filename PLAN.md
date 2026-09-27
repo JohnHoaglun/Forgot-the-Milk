@@ -50,9 +50,7 @@ Sequencing: D4 is not closed (manual two-Apple-ID smoke checklist + final `scrip
    - One-off items (`catalogItemID == nil`) are untouched.
 6. Save-to-catalog dedupe: reuse an existing household `CatalogItem` with the same (category, normalized name); on reuse, do not overwrite its default quantity/unit/note — confirmed.
 
-Still open (minor):
-
-- Save-from-edit value inheritance: the catalog item inherits the list item's current form values (name/quantity/unit/note/category) at the moment of saving, and the list item keeps its place on the list. Awaiting confirmation (low risk — it is the only sensible default).
+Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inherits the list item's current form values (name/quantity/unit/note/category) at the moment of saving, and the list item keeps its place on the list. No open questions remain on the D5 plan.
 
 ### Spec changes (apply after approval; spec is the authority)
 

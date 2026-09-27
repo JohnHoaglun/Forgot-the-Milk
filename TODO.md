@@ -31,6 +31,6 @@
 
 ## Next
 
-- [ ] D5 (reviewed 2026-09-26): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–4 and 6; the catalog-item move re-homes referencing list items and template entries; save-from-edit value inheritance still to confirm). Starts after D4 closes.
+- [ ] D5 (reviewed 2026-09-26, all questions resolved): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–6; the catalog-item move re-homes referencing list items and template entries; save-from-edit inherits the list item's form values). Starts after D4 closes.
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.
