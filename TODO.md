@@ -26,11 +26,11 @@
 - [x] D4: Settings UI — iCloud/account status, sync status with plain-language error text and Retry, collaborators, share/stop-sharing controls, unavailable state with disabled sharing and recovery instruction; accessibility identifiers plus an accessibility-size UI pass (delivered 2026-09-21; 4 UI tests).
 - [x] D4: CloudKit contract tests (fake client: share creation/acceptance per device, stop-share, unavailable-account reconcile failure) and UI tests for the share and status surfaces (delivered 2026-09-21).
 - [x] D4: signed-build entitlement verification and real-device sync — container `iCloud.com.hoaglun.forgotthemilk` and `com.apple.developer.icloud-services = [CloudKit]` confirmed in a signed iPhone build, and sync verified end-to-end on-device after fixing the real-server query behaviors (missing-type tolerance, queryable `updatedAt` with constant predicate, schema-version journal reset) (2026-09-22; build number 10).
-- [ ] D4: manual two-Apple-ID smoke checklist — share, accept, edit, and stop-share on two signed devices with the real container (container now verified provisioned in a signed device build, 2026-09-22). BLOCKED 2026-09-26: no access to a second device at the moment; D4 stays open until this runs (or the owner re-sequences D5 ahead of it).
-- [ ] D4: final end-to-end `scripts/verify.sh` run to close the slice.
+- [ ] D4: manual two-Apple-ID smoke checklist — share, accept, edit, and stop-share on two signed devices with the real container (container now verified provisioned in a signed device build, 2026-09-22). ON HOLD 2026-09-26: no second device and no second Apple ID available; owner re-sequenced D5 ahead of it (DECISIONS 2026-09-26). D4 stays open until this runs on two real signed devices.
+- [ ] D4: final end-to-end `scripts/verify.sh` run to close the slice. Baseline run started 2026-09-26 after the D5 re-sequence; D5 sub-steps each re-run the gate.
 
 ## Next
 
-- [ ] D5 (reviewed 2026-09-26, all questions resolved): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–6; the catalog-item move re-homes referencing list items and template entries; save-from-edit inherits the list item's form values). Starts after D4 closes.
+- [ ] D5 (active — started 2026-09-26 per owner re-sequence): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–6; the catalog-item move re-homes referencing list items and template entries; save-from-edit inherits the list item's form values). Sub-step A in progress: `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3).
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.

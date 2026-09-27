@@ -22,11 +22,11 @@ Status (2026-09-22): steps 1–8 delivered (entitlements; sync domain; `CloudKit
 
 Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persistence as source of truth, background reconcile on launch/foreground, recoverable error states with Retry, OSLog without notes/identities/share URLs), §6 D4 acceptance criteria, §7 (sync-state reducer and retry unit tests; offline queue replay and conflict merge integration coverage; CloudKit contract fake-client tests; manual two-Apple-ID checklist), §8 (container/bundle decision, `readWrite` default, no read-only choice, fresh-install share acceptance).
 
-## D5 — Custom item defaults and catalog management (reviewed 2026-09-26 — starts after D4 closes)
+## D5 — Custom item defaults and catalog management (active — started 2026-09-26)
 
 Source: field feedback recorded 2026-09-26 in the product spec §9 (real grocery run). "Template" in the feedback is confirmed by the owner to mean the household catalog (reusable custom items), not a `Template` snapshot.
 
-Sequencing: D4 is not closed (manual two-Apple-ID smoke checklist + final `scripts/verify.sh` run). D5 starts only after D4 is closed, per the slice discipline.
+Sequencing: re-sequenced by the owner on 2026-09-26 — D5 is active now. D4 is not closed: its manual two-Apple-ID smoke is on hold (no second device or second Apple ID available; DECISIONS 2026-09-26) and remains a release gate. The final D4 `scripts/verify.sh` baseline run started 2026-09-26; each D5 sub-step closes with its own `scripts/verify.sh` run.
 
 ### Goals (mapped to spec §9 feedback)
 
@@ -82,12 +82,12 @@ Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inheri
 1. D1 (delivered): app shell, local model, deterministic catalog, persisted list behavior.
 2. D2 (delivered): catalog picker, custom items, metadata, category order, accessibility.
 3. D3 (delivered): reusable templates and plain-text email/share-sheet export.
-4. D4 (active): CloudKit sharing, invitations, offline reconciliation, and recovery states.
-5. D5 (reviewed 2026-09-26; starts after D4 closes): custom item defaults and catalog management — see the D5 section above.
+4. D4 (active; smoke on hold since 2026-09-26): CloudKit sharing, invitations, offline reconciliation, and recovery states — implementation delivered; the manual two-Apple-ID smoke remains (real-sharing gate).
+5. D5 (active — started 2026-09-26, re-sequenced ahead of the on-hold D4 smoke): custom item defaults and catalog management — see the D5 section above.
 
 ## Blockers
 
-- 2026-09-26: the manual two-Apple-ID smoke is blocked on hardware — no access to a second device at the moment. D4 remains open until the smoke (share, accept, edit, stop-share on two signed devices, real container) and the final `scripts/verify.sh` run are done; D5 stays queued behind D4 unless the owner re-sequences.
+- 2026-09-26: the manual two-Apple-ID smoke is on hold — no second device and no second Apple ID are available, and a two-week wait is not realistic (owner). The owner re-sequenced delivery on 2026-09-26 (DECISIONS.md): **D5 is active now**; D4 remains open until the smoke (share, accept, edit, stop-share on two signed devices, real container) runs, and no real-sharing claim is made before then.
 
 Background: no implementation blocker is recorded. The CloudKit entitlements are committed (step 1) and the container `iCloud.com.hoaglun.forgotthemilk` is verified provisioned in a signed device build (2026-09-22); real-device sync works end-to-end. Before real D4 validation is claimed, the manual two-Apple-ID sharing smoke must be executed (spec release gate).
 
