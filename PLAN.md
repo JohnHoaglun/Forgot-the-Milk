@@ -2,7 +2,7 @@
 
 ## Active milestone
 
-D4 — CloudKit collaboration and recovery. D1 (foundation and catalog), D2 (item workflow), and D3 (templates and email export) were delivered and verified by `scripts/verify.sh`.
+D5 — custom item defaults and catalog management (started 2026-09-26 per the owner re-sequence). D4 (CloudKit collaboration and recovery) remains open with its manual two-Apple-ID smoke on hold (2026-09-26; Blockers below). D1 (foundation and catalog), D2 (item workflow), and D3 (templates and email export) were delivered and verified by `scripts/verify.sh`.
 
 ### D4 work breakdown
 
@@ -26,7 +26,7 @@ Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persi
 
 Source: field feedback recorded 2026-09-26 in the product spec §9 (real grocery run). "Template" in the feedback is confirmed by the owner to mean the household catalog (reusable custom items), not a `Template` snapshot.
 
-Sequencing: re-sequenced by the owner on 2026-09-26 — D5 is active now. D4 is not closed: its manual two-Apple-ID smoke is on hold (no second device or second Apple ID available; DECISIONS 2026-09-26) and remains a release gate. The final D4 `scripts/verify.sh` baseline run started 2026-09-26; each D5 sub-step closes with its own `scripts/verify.sh` run.
+Sequencing: re-sequenced by the owner on 2026-09-26 — D5 is active now. D4 is not closed: its manual two-Apple-ID smoke is on hold (no second device or second Apple ID available; DECISIONS 2026-09-26) and remains a release gate. The final D4 `scripts/verify.sh` baseline run completed green 2026-09-26; each D5 sub-step closes with its own `scripts/verify.sh` run.
 
 ### Goals (mapped to spec §9 feedback)
 
@@ -52,7 +52,7 @@ Sequencing: re-sequenced by the owner on 2026-09-26 — D5 is active now. D4 is 
 
 Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inherits the list item's current form values (name/quantity/unit/note/category) at the moment of saving, and the list item keeps its place on the list. No open questions remain on the D5 plan.
 
-### Spec changes (apply after approval; spec is the authority)
+### Spec changes (A-scoped changes applied 2026-09-26 with sub-step A; B/C changes pending; spec is the authority)
 
 - §2 rule 6: the ad-hoc default category becomes `Custom Added`.
 - §3: `Custom Added` added to the seeded system categories — starts empty, editable in order like other system categories, not renamable/deletable in v1.
@@ -73,8 +73,8 @@ Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inheri
 
 ### Suggested sub-steps (each a shippable delivery)
 
-- A: `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3).
-- B: save-to-catalog from the item edit form (feedback 5).
+- A: `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3) — **delivered 2026-09-26** (build 11, `scripts/verify.sh` green: unit + 36 UI tests). Seed category added with deterministic ID and `defaultOrder` 26; `ItemFormView` defaults new custom items to `Custom Added` and `Save to catalog` ON (opt-out copy updated); `ItemEntryUseCases` save-to-catalog reuses a same-category household `CatalogItem` by normalized name without overwriting its defaults.
+- B: save-to-catalog from the item edit form (feedback 5) — next.
 - C: move custom catalog items between categories (feedback 4).
 
 ## Delivery sequence

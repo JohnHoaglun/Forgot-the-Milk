@@ -91,6 +91,10 @@ struct ItemEntryAddTests {
         return (container, context, list, categories[0])
     }
 
+    private func catalogItems(in context: ModelContext) -> [CatalogItem] {
+        (try? context.fetch(FetchDescriptor<CatalogItem>())) ?? []
+    }
+
     @Test func addCatalogItemInsertsOneRowWithMetadata() throws {
         let (container, context, list, category) = try makeStore()
         defer { _ = container }
@@ -200,6 +204,79 @@ struct ItemEntryAddTests {
 
         let item = try listItems(in: context, listID: list.id)[0]
         #expect(item.catalogItemID == catalogItems[0].id)
+    }
+
+    @Test func saveToCatalogReusesExistingHouseholdItemAndReopens() throws {
+        let (container, context, list, category) = try makeStore()
+        defer { _ = container }
+        let useCases = ItemEntryUseCases(context: context)
+
+        #expect(useCases.add(ItemDraft(name: "Miso Soup", quantity: "4", unit: "cups", note: "low salt", categoryID: category.id, catalogItemID: nil), to: list.id, saveToCatalog: true) == .added)
+
+        var items = try listItems(in: context, listID: list.id)
+        let catalogID = try #require(items[0].catalogItemID)
+        ItemUseCases(context: context).complete(items[0])
+
+        #expect(useCases.add(ItemDraft(name: "Miso Soup", quantity: nil, unit: nil, note: nil, categoryID: category.id, catalogItemID: nil), to: list.id, saveToCatalog: true) == .reopened)
+
+        #expect(catalogItems(in: context).count == 1)
+        items = try listItems(in: context, listID: list.id)
+        #expect(items.count == 1)
+        #expect(items[0].state == .needed)
+        #expect(items[0].catalogItemID == catalogID)
+    }
+
+    @Test func saveToCatalogReusesHouseholdItemWithNormalizedName() throws {
+        let (container, context, list, category) = try makeStore()
+        defer { _ = container }
+        let existing = TestFixtures.makeCatalogItem(in: context, category: category, name: "Sake", defaultQuantity: "2", defaultUnit: "bottles", defaultNote: "dry", scope: .household)
+        let useCases = ItemEntryUseCases(context: context)
+
+        #expect(useCases.add(ItemDraft(name: "  SAKE ", quantity: "5", unit: "cans", note: "sweet", categoryID: category.id, catalogItemID: nil), to: list.id, saveToCatalog: true) == .added)
+
+        let catalog = catalogItems(in: context)
+        #expect(catalog.count == 1)
+        #expect(catalog[0].id == existing.id)
+        #expect(catalog[0].defaultQuantity == "2")
+        #expect(catalog[0].defaultUnit == "bottles")
+        #expect(catalog[0].defaultNote == "dry")
+
+        let item = try listItems(in: context, listID: list.id)[0]
+        #expect(item.catalogItemID == existing.id)
+        #expect(item.quantity == "5")
+    }
+
+    @Test func saveToCatalogDedupeIsCategoryScoped() throws {
+        let container = try TestStore.makeInMemoryContainer()
+        let context = TestStore.makeContext(container)
+        let (list, categories) = TestFixtures.makeList(in: context)
+        defer { _ = container }
+        _ = TestFixtures.makeCatalogItem(in: context, category: categories[0], name: "Sake", scope: .household)
+        let useCases = ItemEntryUseCases(context: context)
+
+        #expect(useCases.add(ItemDraft(name: "Sake", quantity: nil, unit: nil, note: nil, categoryID: categories[1].id, catalogItemID: nil), to: list.id, saveToCatalog: true) == .added)
+
+        let catalog = catalogItems(in: context).sorted { $0.name < $1.name }
+        #expect(catalog.count == 2)
+        #expect(catalog.first?.categoryID == categories[0].id)
+        #expect(catalog.last?.categoryID == categories[1].id)
+    }
+
+    @Test func saveToCatalogDoesNotReuseBuiltInItems() throws {
+        let (container, context, list, category) = try makeStore()
+        defer { _ = container }
+        _ = TestFixtures.makeCatalogItem(in: context, category: category, name: "Milk", scope: .builtIn)
+        let useCases = ItemEntryUseCases(context: context)
+
+        #expect(useCases.add(ItemDraft(name: "Milk", quantity: "2", unit: "gallons", note: nil, categoryID: category.id, catalogItemID: nil), to: list.id, saveToCatalog: true) == .added)
+
+        let catalog = catalogItems(in: context)
+        #expect(catalog.count == 2)
+        let household = try #require(catalog.first { $0.scope == .household })
+        #expect(household.name == "Milk")
+
+        let item = try listItems(in: context, listID: list.id)[0]
+        #expect(item.catalogItemID == household.id)
     }
 
     @Test func invalidDraftCreatesNothing() throws {

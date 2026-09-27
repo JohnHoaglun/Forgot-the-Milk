@@ -32,7 +32,8 @@ struct DeterministicIDTests {
         let categoryIDs = Set(SeedCatalog.categories.map { DeterministicID.category($0.name) })
         let itemIDs = Set(SeedCatalog.entries.map { DeterministicID.catalogItem(category: $0.category, label: $0.label) })
 
-        #expect(categoryIDs.count == 26)
+        #expect(categoryIDs.count == 27)
         #expect(itemIDs.count == 256)
+        #expect(categoryIDs.isDisjoint(with: itemIDs))
     }
 }

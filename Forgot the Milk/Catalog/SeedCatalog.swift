@@ -27,7 +27,8 @@ enum SeedCatalog {
         SeedCategory(name: "Cleaning products", defaultOrder: 22),
         SeedCategory(name: "Office supplies", defaultOrder: 23),
         SeedCategory(name: "Other stuff", defaultOrder: 24),
-        SeedCategory(name: "Other / errands", defaultOrder: 25)
+        SeedCategory(name: "Other / errands", defaultOrder: 25),
+        SeedCategory(name: "Custom Added", defaultOrder: 26)
     ]
 
     static let entries: [SeedEntry] = [

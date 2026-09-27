@@ -35,6 +35,7 @@ struct ItemFormView: View {
         var unit0 = ""
         var note0 = ""
         var category0: UUID?
+        var saveToCatalog0 = false
         var catalogID: UUID?
 
         switch mode {
@@ -46,7 +47,7 @@ struct ItemFormView: View {
             category0 = item.categoryID
             catalogID = item.id
         case .addCustom:
-            break
+            saveToCatalog0 = true
         case .edit(let item):
             name0 = item.name
             quantity0 = item.quantity ?? ""
@@ -61,7 +62,7 @@ struct ItemFormView: View {
         _unit = State(initialValue: unit0)
         _note = State(initialValue: note0)
         _categoryID = State(initialValue: category0)
-        _saveToCatalog = State(initialValue: false)
+        _saveToCatalog = State(initialValue: saveToCatalog0)
         catalogItemID = catalogID
     }
 
@@ -128,9 +129,9 @@ struct ItemFormView: View {
                     Section {
                         Toggle("Save to catalog", isOn: $saveToCatalog)
                             .accessibilityIdentifier("save-to-catalog-toggle")
-                            .accessibilityHint("Saves this item as a reusable catalog entry")
+                            .accessibilityHint("On by default. Saves this item as a reusable catalog entry")
                     } footer: {
-                        Text("Saves this item as a reusable catalog entry for future lists.")
+                        Text("On by default. Turn the toggle off to keep the item out of the catalog.")
                     }
                 }
 
@@ -220,8 +221,8 @@ struct ItemFormView: View {
 
     private func applyDefaultCategory() {
         guard case .addCustom = mode, categoryID == nil else { return }
-        if let other = categories.first(where: { $0.name == "Other / errands" }) {
-            categoryID = other.id
+        if let customAdded = categories.first(where: { $0.name == "Custom Added" }) {
+            categoryID = customAdded.id
         }
     }
 

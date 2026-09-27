@@ -14,8 +14,8 @@ struct SeedCatalogTests {
         return collapsed.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
-    @Test func categoriesCountIs26() {
-        #expect(SeedCatalog.categories.count == 26)
+    @Test func categoriesCountIs27() {
+        #expect(SeedCatalog.categories.count == 27)
     }
 
     @Test func entriesCountIs256() {
@@ -23,8 +23,13 @@ struct SeedCatalogTests {
     }
 
     @Test func defaultOrdersAreSequential() {
-        #expect(SeedCatalog.categories.map(\.defaultOrder) == Array(0...25))
-        #expect(SeedCatalog.categories.last?.name == "Other / errands")
+        #expect(SeedCatalog.categories.map(\.defaultOrder) == Array(0...26))
+        #expect(SeedCatalog.categories.last?.name == "Custom Added")
+    }
+
+    @Test func customAddedCategoryHasNoEntries() {
+        #expect(!SeedCatalog.entries.contains { $0.category == "Custom Added" })
+        #expect(SeedCatalog.categories.first(where: { $0.name == "Custom Added" })?.defaultOrder == 26)
     }
 
     @Test func everyEntryBelongsToACategory() {

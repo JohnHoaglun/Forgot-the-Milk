@@ -12,17 +12,8 @@ struct ItemEntryUseCases {
 
         var catalogItemID = draft.catalogItemID
         if saveToCatalog, catalogItemID == nil {
-            let catalogItem = CatalogItem(
-                id: UUID(),
-                name: draft.name,
-                categoryID: categoryID,
-                defaultQuantity: draft.quantity,
-                defaultUnit: draft.unit,
-                defaultNote: draft.note,
-                scope: .household
-            )
-            context.insert(catalogItem)
-            catalogItemID = catalogItem.id
+            catalogItemID = existingHouseholdCatalogItem(matching: draft.name, in: categoryID)?.id
+                ?? createHouseholdCatalogItem(from: draft, in: categoryID)
         }
 
         if let catalogItemID {
@@ -74,6 +65,30 @@ struct ItemEntryUseCases {
         item.updatedAt = Date()
         save()
         return true
+    }
+
+    private func existingHouseholdCatalogItem(matching name: String, in categoryID: UUID) -> CatalogItem? {
+        let descriptor = FetchDescriptor<CatalogItem>(predicate: #Predicate {
+            $0.categoryID == categoryID
+        })
+        let normalized = ItemLabel.normalize(name)
+        return (try? context.fetch(descriptor))?.first {
+            $0.scope == .household && ItemLabel.normalize($0.name) == normalized
+        }
+    }
+
+    private func createHouseholdCatalogItem(from draft: ItemDraft, in categoryID: UUID) -> UUID {
+        let catalogItem = CatalogItem(
+            id: UUID(),
+            name: draft.name,
+            categoryID: categoryID,
+            defaultQuantity: draft.quantity,
+            defaultUnit: draft.unit,
+            defaultNote: draft.note,
+            scope: .household
+        )
+        context.insert(catalogItem)
+        return catalogItem.id
     }
 
     private func items(in listID: UUID, catalogItemID: UUID) -> [ListItem] {

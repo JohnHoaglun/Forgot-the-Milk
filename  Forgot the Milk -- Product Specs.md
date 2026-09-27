@@ -17,7 +17,7 @@ An iPhone-first household shopping-list app for two or more iCloud users. It has
 3. Needed items are grouped and ordered by the household's configured category order, then by ascending item `sortOrder` within each category. New items, and items moved to another category, append to the bottom of that category. Completed items appear in a collapsed `Completed (n)` section at the bottom.
 4. Each item has a required display name and optional quantity/unit and note. Examples: `Milk — 1 gallon`; note: `the red one`.
 5. Catalog items are reusable definitions identified by their stable catalog ID, not their display label. Adding one creates a new list-item instance; the same catalog item may be on the list only once while needed. If it is already completed, adding it reopens that instance rather than duplicating it. Identical labels in different categories are distinct catalog entries and must both be preserved.
-6. An ad-hoc entry has a name and may be assigned a category. Its default category is `Other / errands`, and it is shown after catalog categories unless the user changes it.
+6. An ad-hoc entry has a name and may be assigned a category. Its default category is the seeded `Custom Added` category, which appears after the catalog categories. `Custom Added` is a seeded system category with no built-in entries.
 7. All local mutations must succeed without a network connection. Sync resumes opportunistically when iCloud/Internet return.
 8. Concurrent edits to different records both persist. Concurrent edits to the same record use whole-record last-writer-wins, determined by the later CloudKit server modification timestamp; v1 has no field-level merge or conflict dialog. Do not silently discard a local unsynced mutation that CloudKit rejects or cannot reconcile: surface a sync error and provide Retry. The UI must refresh after remote changes.
 9. A template is a named snapshot of the *needed-item selections and their quantity, unit, note, category, and ordering*—not a snapshot of completion state. Applying a template adds/reopens its items without removing other currently needed items.
@@ -30,7 +30,7 @@ Use stable UUIDs for local identity and persist CloudKit record identifiers/shar
 | Entity | Required fields | Notes |
 | --- | --- | --- |
 | `HouseholdList` | id, title, categoryOrder, shareMetadata | Seed a personal list on first launch; its share metadata is nil until shared. |
-| `Category` | id, name, defaultOrder, isSystem | v1 system categories are editable in order but not renamed/deleted. Use the source document's second-level shopping groups (for example, `Fresh vegetables` and `Personal care`) plus `Other / errands`. Do not show `FOODSTUFFS` or `HOUSEHOLD` as app categories. |
+| `Category` | id, name, defaultOrder, isSystem | v1 system categories are editable in order but not renamed/deleted. Use the source document's second-level shopping groups (for example, `Fresh vegetables` and `Personal care`) plus `Other / errands` and the entry-less `Custom Added` category (default category for custom items). Do not show `FOODSTUFFS` or `HOUSEHOLD` as app categories. |
 | `CatalogItem` | id, name, categoryID, defaultQuantity, defaultUnit, defaultNote, scope | Seeded items have `scope = builtIn` and are local, deterministic reference data that never syncs. A user may save a custom item with `scope = household`; those reusable catalog items sync to collaborators. |
 | `ListItem` | id, listID, catalogItemID?, name, categoryID, quantity?, unit?, note?, state, sortOrder, createdAt, updatedAt | `state` is `needed` or `completed`; preserve values after completion. `sortOrder` controls ascending display order within the category. |
 | `Template` | id, listID, name, entries, createdAt, updatedAt | `entries` embeds value snapshots; templates sync to collaborators. |
@@ -54,7 +54,7 @@ Seed categories and catalog items from the authoritative list in [Appendix A](#a
 
 - Add flow starts with a searchable catalog picker grouped by category. Search here is allowed because it is part of selection, not v2 list filtering.
 - Selecting a catalog entry opens details prefilled from defaults; Save adds/reopens it.
-- `Add custom item` opens the same details form with an empty name and category picker defaulting to `Other / errands`. It creates a one-time synced list item unless the user selects `Save to catalog`; that option creates a reusable, synced household catalog item for future selection.
+- `Add custom item` opens the same details form with an empty name, category picker defaulting to `Custom Added`, and `Save to catalog` on by default; the form must make it obvious how to turn it off. Saving with the option on creates or reuses a reusable, synced household catalog item for future selection: if a household entry with the same category and normalized label already exists, it is reused and its defaults are never overwritten; otherwise a new one is created. Identical labels in different categories remain distinct.
 - Detail form fields: Name (required, 1–120 visible characters), Quantity (optional free text, 1–40), Unit (optional free text, 1–40), Note (optional, 1–280), Category (required). Disable Save until valid.
 - An existing list item opens this form for editing. Delete is available from the form and requires confirmation.
 - Unit-system setting supplies the initial unit suggestion only; it never converts entered quantities.
@@ -176,7 +176,7 @@ Terminology note: "template" in these notes means the reusable household catalog
 4. The user needs a way to be able to move ItemX from category-1 to category-2 in the catalog.
 5. If a user adds a custom item to the list but not the catalog, the user should be able to tap the custom item in the active list and be able to save it to a category.
 
-Status: recorded 2026-09-26; owner review completed 2026-09-26 — the D5 plan in `PLAN.md` is confirmed with one refinement: moving a custom catalog item re-homes referencing list items and template entries to the new category. No behavior change is implemented by this section alone; D5 starts after D4 closes.
+Status: recorded 2026-09-26; owner review completed 2026-09-26 — the D5 plan in `PLAN.md` is confirmed with one refinement: moving a custom catalog item re-homes referencing list items and template entries to the new category. Owner decision 2026-09-26: D5 starts immediately while the D4 two-Apple-ID smoke waits for a second device. Sub-step A (notes 1–3) is delivered: its behavior changes are folded into rule 6, the information model, and section 4.2 above.
 
 ## Appendix A — Seed catalog
 
@@ -516,3 +516,7 @@ This is the authoritative v1 built-in catalog. The two top-level headings organi
 - Light bulbs
 - Newspaper / Magazine
 - Random impulse buy
+
+#### Custom Added
+
+Seeded entry-less system category: the default category for custom items saved to the catalog. It appears after the catalog categories and contains no built-in entries.

@@ -151,7 +151,9 @@ final class Forgot_the_MilkUITests: XCTestCase {
         returnToList()
     }
 
-    private func addCustomItem(_ name: String, quantity: String? = nil, unit: String? = nil, note: String? = nil, saveToCatalog: Bool = false) {
+    /// `saveToCatalog` of `nil` leaves the form default untouched; a value
+    /// asserts and, if needed, forces the toggle into that state.
+    private func addCustomItem(_ name: String, quantity: String? = nil, unit: String? = nil, note: String? = nil, saveToCatalog: Bool? = nil) {
         openCatalogPicker()
         app.buttons["custom-item-entry"].tap()
 
@@ -159,7 +161,7 @@ final class Forgot_the_MilkUITests: XCTestCase {
         XCTAssertTrue(save.waitForExistence(timeout: 5), "Custom item form should be visible")
 
         // Toggle before any text entry so the keyboard never covers it.
-        if saveToCatalog {
+        if let saveToCatalog {
             // If the picker's search field is active its search bar (and
             // keyboard) can cover the toggle; collapse it first.
             let closeSearch = app.buttons["close"]
@@ -168,15 +170,18 @@ final class Forgot_the_MilkUITests: XCTestCase {
             }
             let toggle = app.switches["save-to-catalog-toggle"]
             XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Save to catalog toggle should be visible")
-            // The element is the whole row; its center is the label, which
-            // does not toggle. Tap the switch at the row's trailing edge.
-            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-            // The accessibility value can lag the tap, so poll briefly.
-            let deadline = Date().addingTimeInterval(2)
-            while !switchIsOn(toggle) && Date() < deadline {
-                usleep(50_000)
+            if switchIsOn(toggle) != saveToCatalog {
+                // The element is the whole row; its center is the label, which
+                // does not toggle. Tap the switch at the row's trailing edge.
+                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+                // The accessibility value can lag the tap, so poll briefly.
+                let deadline = Date().addingTimeInterval(2)
+                while switchIsOn(toggle) != saveToCatalog && Date() < deadline {
+                    usleep(50_000)
+                }
             }
-            XCTAssertTrue(switchIsOn(toggle), "Save to catalog toggle should be on")
+            XCTAssertTrue(switchIsOn(toggle) == saveToCatalog,
+                          "Save to catalog toggle should be \(saveToCatalog ? "on" : "off")")
         }
 
         app.textFields["item-form-name-field"].tap()
@@ -245,7 +250,7 @@ final class Forgot_the_MilkUITests: XCTestCase {
         launch()
         addCustomItem("Sourdough", quantity: "1", unit: "loaf", note: "for sandwiches")
 
-        XCTAssertTrue(staticText(withLabel: "Other / errands (1)").exists)
+        XCTAssertTrue(staticText(withLabel: "Custom Added (1)").exists)
         XCTAssertTrue(app.staticTexts["Sourdough"].exists)
         XCTAssertTrue(staticText(withLabel: "1 loaf \u{00B7} for sandwiches").exists)
     }
@@ -279,7 +284,7 @@ final class Forgot_the_MilkUITests: XCTestCase {
         relaunch()
 
         XCTAssertTrue(app.staticTexts["Sourdough"].waitForExistence(timeout: 5))
-        XCTAssertTrue(staticText(withLabel: "Other / errands (1)").exists)
+        XCTAssertTrue(staticText(withLabel: "Custom Added (1)").exists)
         XCTAssertTrue(staticText(withLabel: "1 loaf \u{00B7} for sandwiches").exists)
     }
 
@@ -441,6 +446,64 @@ final class Forgot_the_MilkUITests: XCTestCase {
 
         openCatalogPicker()
         catalogRow(name: "Sourdough", label: "Sourdough, already added")
+    }
+
+    func testCustomFormDefaultsToSaveToCatalogAndCustomAdded() {
+        launch()
+        openCatalogPicker()
+        app.buttons["custom-item-entry"].tap()
+        XCTAssertTrue(app.buttons["item-form-save-button"].waitForExistence(timeout: 5), "Custom item form should be visible")
+
+        let toggle = app.switches["save-to-catalog-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Save to catalog toggle should be visible")
+        XCTAssertTrue(switchIsOn(toggle), "Save to catalog toggle should be on by default")
+
+        let customAddedShown = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Custom Added"))
+            .firstMatch
+        XCTAssertTrue(customAddedShown.waitForExistence(timeout: 5), "Form should default the category to Custom Added")
+
+        app.buttons["item-form-cancel-button"].tap()
+        returnToList()
+    }
+
+    func testCustomItemSavesToCatalogByDefault() {
+        launch()
+        // Do not touch the toggle: the product default is on.
+        openCatalogPicker()
+        app.buttons["custom-item-entry"].tap()
+        app.textFields["item-form-name-field"].tap()
+        app.typeText("Rye Bread")
+        app.buttons["item-form-save-button"].tap()
+        returnToList()
+
+        XCTAssertTrue(app.staticTexts["Rye Bread"].exists)
+        XCTAssertTrue(staticText(withLabel: "Custom Added (1)").exists)
+
+        relaunch()
+
+        openCatalogPicker()
+        catalogRow(name: "Rye", label: "Rye Bread, already added")
+    }
+
+    func testCustomItemSkipsCatalogWhenToggleOff() {
+        launch()
+        addCustomItem("Oat Milk", saveToCatalog: false)
+        XCTAssertTrue(app.staticTexts["Oat Milk"].exists)
+
+        relaunch()
+
+        openCatalogPicker()
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "Catalog search field should be visible")
+        searchField.tap()
+        app.typeText("Oat Milk")
+        XCTAssertFalse(button(withLabel: "Oat Milk").exists, "Opted-out custom item must not appear in the catalog")
+        XCTAssertFalse(
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label BEGINSWITH %@", "Oat Milk,"))
+                .firstMatch.exists
+        )
     }
 
     func testCatalogSearchFiltersEntries() {
