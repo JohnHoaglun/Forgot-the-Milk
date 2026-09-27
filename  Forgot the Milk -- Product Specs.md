@@ -164,6 +164,20 @@ Minimum automated cases:
 - **Decided:** completed items remain until the user selects `Clear completed` and confirms. They are never cleared automatically.
 - **Decided:** D4 supports accepting a `CKShare` invitation after a fresh installation. Preserve and handle `CKShare.Metadata` during the app launch/activation flow so the recipient can join without a replacement invitation.
 
+## 9. Field notes — user feedback (unreviewed)
+
+Captured 2026-09-26 from a real grocery run on the in-progress D4 build. These are raw field notes, not yet approved specification changes; the proposed treatment is tracked as the draft D5 plan in `PLAN.md` and awaits owner review.
+
+Terminology note: "template" in these notes means the reusable household catalog (where a custom item is saved for reuse on future shopping runs), not a `Template` snapshot. This interpretation must be confirmed at review.
+
+1. The default behavior when adding a new/custom item should be to save it to the catalog with a category. Verbatim pain point: "Numerous times I added an item but forget to add to the template... last opportunity that upset me."
+2. Let the user opt out of saving the item to the catalog.
+3. Create a new category called `Custom Added` that is the default category if the user does not select one of the existing categories.
+4. The user needs a way to be able to move ItemX from category-1 to category-2 in the catalog.
+5. If a user adds a custom item to the list but not the catalog, the user should be able to tap the custom item in the active list and be able to save it to a category.
+
+Status: recorded 2026-09-26; draft plan (D5) pending review in `PLAN.md`. No behavior change is approved by this section alone.
+
 ## Appendix A — Seed catalog
 
 This is the authoritative v1 built-in catalog. The two top-level headings organize seed data only; each child heading is a visible, reorderable system category. Item labels must be seeded exactly as written.

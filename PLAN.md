@@ -22,12 +22,64 @@ Status (2026-09-22): steps 1–8 delivered (entitlements; sync domain; `CloudKit
 
 Spec anchors: §4.4 (sharing and settings), §5 (technical behavior: local persistence as source of truth, background reconcile on launch/foreground, recoverable error states with Retry, OSLog without notes/identities/share URLs), §6 D4 acceptance criteria, §7 (sync-state reducer and retry unit tests; offline queue replay and conflict merge integration coverage; CloudKit contract fake-client tests; manual two-Apple-ID checklist), §8 (container/bundle decision, `readWrite` default, no read-only choice, fresh-install share acceptance).
 
+## D5 — Custom item defaults and catalog management (draft — pending owner review)
+
+Source: field feedback recorded 2026-09-26 in the product spec §9 (real grocery run). "Template" in the feedback is read as the household catalog (reusable custom items), not a `Template` snapshot — interpretation to confirm.
+
+Sequencing: D4 is not closed (manual two-Apple-ID smoke checklist + final `scripts/verify.sh` run). D5 starts only after D4 is closed, per the slice discipline.
+
+### Goals (mapped to spec §9 feedback)
+
+| # | Feedback | Behavior change |
+| --- | --- | --- |
+| 1 | Custom items should save to the catalog by default | `Save to catalog` in the custom-item form defaults ON (today OFF, `ItemFormView.swift:64`) |
+| 2 | Opt out of saving to the catalog | The toggle stays; OFF = one-time synced list item (today's behavior) |
+| 3 | New `Custom Added` default category | New seeded system category `Custom Added` (deterministic ID, `defaultOrder` 26); default category for new custom items instead of `Other / errands` (`ItemFormView.applyDefaultCategory`, `ItemFormView.swift:221`) |
+| 4 | Move a catalog item between categories | `CatalogItem.categoryID` becomes changeable for household-scoped items; built-in items stay fixed |
+| 5 | Save a list-only custom item to the catalog later | `Save to catalog` offered from the item edit form (row tap → `ItemFormView(mode: .edit)`, `ListView.swift:56`) for one-off items; the list item links to the created/reused catalog item. Revises DECISIONS 2026-09-15 ("Save to catalog" add-only). |
+
+### Open questions (resolve at review)
+
+1. Confirm "template" = household catalog.
+2. `Custom Added` default position: bottom, after `Other / errands` (`defaultOrder` 26). Existing lists need no migration: `AppSeeding.seedIfNeeded` already inserts missing seed categories idempotently, and `ListGrouping.orderedCategories` falls back to `defaultOrder` for IDs absent from `categoryOrder`, so it appears last. OK?
+3. `Other / errands` remains a normal selectable category, just no longer the default. OK?
+4. #4 scope: household-scoped items only. Built-in items are deterministic local reference data that never sync; moving one on one device would desync the household and drift from the seed.
+5. Moving a catalog item does not re-home existing `ListItem`s or `Template` entries (both carry their own category snapshots). OK?
+6. Save-to-catalog dedupe (new, makes #1 safe by default): reuse an existing household `CatalogItem` with the same (category, normalized name) instead of creating a duplicate; on reuse, do not overwrite its default quantity/unit/note. (Today `ItemEntryUseCases.add` always creates a new `CatalogItem` when saving to catalog, `ItemEntryUseCases.swift:14`.) OK?
+7. #5: the catalog item inherits the list item's current form values (name/quantity/unit/note/category) at the moment of saving, and the list item keeps its place on the list.
+
+### Spec changes (apply after approval; spec is the authority)
+
+- §2 rule 6: the ad-hoc default category becomes `Custom Added`.
+- §3: `Custom Added` added to the seeded system categories — starts empty, editable in order like other system categories, not renamable/deletable in v1.
+- §4.2: custom-item form — `Save to catalog` default ON with opt-out; default category `Custom Added`; edit form offers save-to-catalog for one-off items.
+- §4.2 or a new §4.6 (catalog management): moving a household catalog item between categories; built-in items are not movable.
+- Appendix A: document `Custom Added` as an entry-less seed category. `scripts/check_seed_catalog.sh` audits `(category, label)` pairs only, so an empty category cannot break the audit.
+
+### Implementation sketch
+
+1. Seed + existing installs: `SeedCatalog.categories` += `SeedCategory(name: "Custom Added", defaultOrder: 26)`; no SwiftData schema migration (new `Category` record only).
+2. Default category: `ItemFormView.applyDefaultCategory` resolves `Custom Added` by `DeterministicID.category("Custom Added")` instead of name-matching `Other / errands`.
+3. Default save: `saveToCatalog` initial state `true` in `.addCustom`; update the section footer copy so opting out is discoverable.
+4. Save-to-catalog dedupe: `ItemEntryUseCases.add(saveToCatalog:)` first looks up a household `CatalogItem` by (categoryID, `ItemLabel.normalize(name)`); on match, link the list item to it and create nothing new.
+5. Save from edit (#5): show the toggle in `.edit` mode when `item.catalogItemID == nil`; on save, create/reuse the household catalog item from the form values, set `item.catalogItemID`, keep the list item. New DECISIONS row superseding the 2026-09-15 row.
+6. Move between categories (#4): new `CatalogUseCases.move(_:to:)` — household scope only, updates `categoryID` + `updatedAt`; surfaced for household items in `CatalogPickerView` (context menu / swipe → category picker sheet); built-in rows get no affordance. Household catalog items and categories already sync, so no sync-layer change.
+7. Tests: unit (default category resolution; catalog-save dedupe reuse and no-overwrite; save-from-edit linking; move scope and no list-item re-homing; `Custom Added` seeding including pre-existing-store idempotency) and UI (form opens with toggle ON and `Custom Added` selected; opt-out path; save-from-edit; move flow; Dynamic Type and VoiceOver passes on new surfaces).
+8. Docs + gate: spec updates, DECISIONS rows, CHANGELOG, build number +1, `scripts/verify.sh` green, atomic commit + push.
+
+### Suggested sub-steps (each a shippable delivery)
+
+- A: `Custom Added` category + default-category switch + default-ON catalog save + dedupe (feedback 1–3).
+- B: save-to-catalog from the item edit form (feedback 5).
+- C: move custom catalog items between categories (feedback 4).
+
 ## Delivery sequence
 
 1. D1 (delivered): app shell, local model, deterministic catalog, persisted list behavior.
 2. D2 (delivered): catalog picker, custom items, metadata, category order, accessibility.
 3. D3 (delivered): reusable templates and plain-text email/share-sheet export.
 4. D4 (active): CloudKit sharing, invitations, offline reconciliation, and recovery states.
+5. D5 (draft, pending owner review): custom item defaults and catalog management — see the D5 section above.
 
 ## Blockers
 
