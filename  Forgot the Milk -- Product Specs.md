@@ -164,7 +164,7 @@ Minimum automated cases:
 - **Decided:** completed items remain until the user selects `Clear completed` and confirms. They are never cleared automatically.
 - **Decided:** D4 supports accepting a `CKShare` invitation after a fresh installation. Preserve and handle `CKShare.Metadata` during the app launch/activation flow so the recipient can join without a replacement invitation.
 
-## 9. Field notes — user feedback (unreviewed)
+## 9. Field notes — user feedback (owner-reviewed 2026-09-26)
 
 Captured 2026-09-26 from a real grocery run on the in-progress D4 build. These are raw field notes, not yet approved specification changes; the proposed treatment is tracked as the draft D5 plan in `PLAN.md` and awaits owner review.
 
@@ -176,7 +176,7 @@ Terminology note: "template" in these notes means the reusable household catalog
 4. The user needs a way to be able to move ItemX from category-1 to category-2 in the catalog.
 5. If a user adds a custom item to the list but not the catalog, the user should be able to tap the custom item in the active list and be able to save it to a category.
 
-Status: recorded 2026-09-26; draft plan (D5) pending review in `PLAN.md`. No behavior change is approved by this section alone.
+Status: recorded 2026-09-26; owner review completed 2026-09-26 — the D5 plan in `PLAN.md` is confirmed with one refinement: moving a custom catalog item re-homes referencing list items and template entries to the new category. No behavior change is implemented by this section alone; D5 starts after D4 closes.
 
 ## Appendix A — Seed catalog
 

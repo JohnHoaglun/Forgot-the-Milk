@@ -29,8 +29,8 @@
 - [ ] D4: manual two-Apple-ID smoke checklist — share, accept, edit, and stop-share on two signed devices with the real container (container now verified provisioned in a signed device build, 2026-09-22).
 - [ ] D4: final end-to-end `scripts/verify.sh` run to close the slice.
 
-## Next (pending owner review)
+## Next
 
-- [ ] D5 (draft): custom item defaults and catalog management — field feedback recorded in spec §9 (2026-09-26); draft plan in `PLAN.md`. Starts after D4 closes and after the owner reviews the plan's open questions.
+- [ ] D5 (reviewed 2026-09-26): custom item defaults and catalog management — field feedback in spec §9; plan in `PLAN.md` (owner confirmed items 1–4 and 6; the catalog-item move re-homes referencing list items and template entries; save-from-edit value inheritance still to confirm). Starts after D4 closes.
 
 Use GitHub Issues for independently trackable work; link them here rather than duplicating their content.
