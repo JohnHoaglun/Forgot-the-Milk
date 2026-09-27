@@ -87,7 +87,9 @@ Save-from-edit value inheritance (confirmed 2026-09-26): the catalog item inheri
 
 ## Blockers
 
-No implementation blocker is currently recorded. The CloudKit entitlements are committed (step 1) and the container `iCloud.com.hoaglun.forgotthemilk` is verified provisioned in a signed device build (2026-09-22); real-device sync works end-to-end. Before real D4 validation is claimed, the manual two-Apple-ID sharing smoke must be executed (spec release gate).
+- 2026-09-26: the manual two-Apple-ID smoke is blocked on hardware — no access to a second device at the moment. D4 remains open until the smoke (share, accept, edit, stop-share on two signed devices, real container) and the final `scripts/verify.sh` run are done; D5 stays queued behind D4 unless the owner re-sequences.
+
+Background: no implementation blocker is recorded. The CloudKit entitlements are committed (step 1) and the container `iCloud.com.hoaglun.forgotthemilk` is verified provisioned in a signed device build (2026-09-22); real-device sync works end-to-end. Before real D4 validation is claimed, the manual two-Apple-ID sharing smoke must be executed (spec release gate).
 
 ## Verification gate
 
